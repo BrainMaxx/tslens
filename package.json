@@ -4,8 +4,8 @@
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
   "version": "1.0.0",
-  "publisher": "BrainMaxx",
-  "author": "Max Gotovkin",
+  "publisher": "MaxGotovkin",
+  "author": "MaxGotovkin",
   "license": "MIT",
   "repository": {
     "type": "git",
