@@ -4,7 +4,7 @@
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
   "version": "1.0.0",
-  "publisher": "kisstkondoros",
+  "publisher": "BrainMaxx",
   "author": "Max Gotovkin",
   "license": "MIT",
   "repository": {
@@ -33,8 +33,7 @@
     "postinstall": "node ./node_modules/vscode/bin/install"
   },
   "contributes": {
-    "commands": [
-    ],
+    "commands": [],
     "configuration": {
       "type": "object",
       "title": "TypeLens configuration",
