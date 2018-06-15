@@ -11,11 +11,14 @@ Still under development, but basic functionality is working)
 ![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot2.png)
 
 ## Supported gutters:
-![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png) - interface implementation
+- ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png) - interface implementation
+- ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/methodEdit.png) - method override
+- ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/fieldEdit.png) - field override
 
-![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/methodEdit.png) - method override
+## Supported commands:
 
-![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/fieldEdit.png) - field override
+- **TSLens: Update** - updates current file,
+- **TSLens: Show override candidates** - if cursor inside some class that extends some other, shows override candidates from the base class and adds them
 
 ## Configuration properties
 

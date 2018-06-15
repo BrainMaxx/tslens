@@ -3,7 +3,7 @@
   "displayName": "TSLens",
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "MaxGotovkin",
   "author": "MaxGotovkin",
   "license": "MIT",
@@ -33,7 +33,14 @@
     "postinstall": "node ./node_modules/vscode/bin/install"
   },
   "contributes": {
-    "commands": [],
+    "commands": [{
+            "command": "tslens.update",
+            "title": "TSLens: Update"
+        },
+        {
+            "command": "tslens.showOverrides",
+            "title": "TSLens: Show override candidates"
+        }],
     "configuration": {
       "type": "object",
       "title": "TSLens configuration",
