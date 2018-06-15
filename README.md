@@ -12,7 +12,9 @@ Still under development, but basic functionality is working)
 
 ## Supported gutters:
 ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png) - interface implementation
+
 ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/methodEdit.png) - method override
+
 ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/fieldEdit.png) - field override
 
 ## Configuration properties
