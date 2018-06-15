@@ -1,22 +1,6 @@
 'use strict';
 import * as vscode from 'vscode';
-
-import {
-  CodeLensProvider,
-  SymbolInformation,
-  SymbolKind,
-  TextDocument,
-  CancellationToken,
-  CodeLens,
-  Range,
-  Command,
-  Location,
-  commands
-} from 'vscode';
-import { AppConfiguration } from './AppConfiguration';
-import { MethodReferenceLens } from './MethodReferenceLens';
 import { TSCodeLensProvider } from './TSCodeLensProvider';
-import Project from 'ts-simple-ast';
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new TSCodeLensProvider(context);
