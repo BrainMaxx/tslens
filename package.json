@@ -36,44 +36,44 @@
     "commands": [],
     "configuration": {
       "type": "object",
-      "title": "TypeLens configuration",
+      "title": "TSLens configuration",
       "properties": {
-        "typelens.excludeself": {
+        "tslens.excludeself": {
           "default": true,
           "description": "A flag which indicates whether the initiating reference should be excluded",
           "type": "boolean"
         },
-        "typelens.blackbox": {
+        "tslens.blackbox": {
           "description": "Array of glob patterns for blackboxed resources",
           "type": "array",
           "default": []
         },
-        "typelens.decorateunused": {
+        "tslens.decorateunused": {
           "default": true,
           "description": "A flag which indicates whether the initiating reference should be decorated if it is unsed",
           "type": "boolean"
         },
-        "typelens.singular": {
+        "tslens.singular": {
           "default": "{0} reference",
           "description": "Localization for the singular case",
           "type": "string"
         },
-        "typelens.blackboxTitle": {
+        "tslens.blackboxTitle": {
           "default": "<< called from blackbox >>",
           "description": "Localization for the case where the only usages are from blackboxed sources",
           "type": "string"
         },
-        "typelens.plural": {
+        "tslens.plural": {
           "default": "{0} references",
           "description": "Localization for the plural case",
           "type": "string"
         },
-        "typelens.noreferences": {
+        "tslens.noreferences": {
           "default": "no references found for {0}",
           "description": "Localization for the case when there are no references found",
           "type": "string"
         },
-        "typelens.unusedcolor": {
+        "tslens.unusedcolor": {
           "default": "#999",
           "description": "Color for unused references",
           "type": "string"

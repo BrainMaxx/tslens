@@ -2,7 +2,7 @@
 
 A VSCode plugin for **typescript** which adds reference code lenses, highlights, gutters for interfaces/classes methods implementations and overrides.
 
-Inspired by TypeLens extension.
+Inspired by tslens extension.
 
 Still under development, but basic functionality is working)
 
@@ -10,21 +10,24 @@ Still under development, but basic functionality is working)
 ![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot.png)
 ![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot2.png)
 
+## Supported gutters:
+(https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png)
+
 ## Configuration properties
 
-- typelens.blackboxTitle
+- tslens.blackboxTitle
   - Localization for the case where the only usages are from blackboxed sources
-- typelens.blackbox
+- tslens.blackbox
   - Array of glob patterns for blackboxed resources
-- typelens.excludeself
+- tslens.excludeself
   - A flag which indicates whether the initiating reference should be excluded
-- typelens.decorateunused
+- tslens.decorateunused
   - A flag which indicates whether the initiating reference should be decorated if it is unsed
-- typelens.singular
+- tslens.singular
   - Localization for the singular case
-- typelens.plural
+- tslens.plural
   - Localization for the plural case
-- typelens.noreferences
+- tslens.noreferences
   - Localization for the case when there are no references found
-- typelens.unusedcolor
+- tslens.unusedcolor
   - Color for unused references
