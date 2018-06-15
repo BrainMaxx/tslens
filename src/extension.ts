@@ -1,6 +1,7 @@
 'use strict';
 import * as vscode from 'vscode';
-import { TSCodeLensProvider } from './TSCodeLensProvider';
+import { TSCodeLensProvider } from './classes/TSCodeLensProvider';
+import { commands } from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new TSCodeLensProvider(context);
@@ -15,24 +16,19 @@ export function activate(context: vscode.ExtensionContext) {
 
   
   const triggerCodeLensComputation = () => {
-    // if (!vscode.window.activeTextEditor) return;
-    // var end = vscode.window.activeTextEditor.selection.end;
-    // vscode.window.activeTextEditor
-    //   .edit(editbuilder => {
-    //     editbuilder.insert(end, ' ');
-    //   })
-    //   .then(() => {
-    //     commands.executeCommand('undo');
-    //   });
+    if (!vscode.window.activeTextEditor) return;
+
+    var end = vscode.window.activeTextEditor.selection.end;
+    vscode.window.activeTextEditor
+      .edit(editbuilder => {
+        editbuilder.insert(end, ' ');
+      })
+      .then(() => {
+        commands.executeCommand('undo');
+      });
   };
   const disposables: vscode.Disposable[] = context.subscriptions;
   const self = this;
-  // disposables.push(
-  //   commands.registerCommand('TSLens.toggle', () => {
-  //     provider.config.TSLensEnabled = !provider.config.TSLensEnabled;
-  //     triggerCodeLensComputation();
-  //   })
-  // );
   disposables.push(
     vscode.languages.registerCodeLensProvider({ pattern: '**/*.ts' }, provider)
   );
@@ -45,4 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.workspace.onDidSaveTextDocument(updateTextEditor)
   );
+  disposables.push(commands.registerCommand('tslens.update', () => {
+    triggerCodeLensComputation();
+}));
 }
