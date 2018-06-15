@@ -197,10 +197,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
       arr.push(...methods, ...this.getClassMembers(bc, methods));
       return arr;
     } else {
-      const methods = cl.getMembers();
-      methods.forEach(x => (x['baseClass'] = bc));
-      arr.push(...methods);
-      return arr;
+      return [];
     }
   }
 
