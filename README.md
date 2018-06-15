@@ -11,7 +11,9 @@ Still under development, but basic functionality is working)
 ![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot2.png)
 
 ## Supported gutters:
-(https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png)
+![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png) - interface implementation
+![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/methodEdit.png) - method override
+![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/fieldEdit.png) - field override
 
 ## Configuration properties
 
