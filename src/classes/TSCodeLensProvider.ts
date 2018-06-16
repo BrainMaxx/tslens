@@ -240,8 +240,10 @@ export class TSCodeLensProvider implements CodeLensProvider {
     const names = filters.map(f => {
       if(f.compilerNode.expression['name']) {
         return f.compilerNode.expression['name'].escapedText.trim();
+      } else if (f.compilerNode.expression['escapedText']) {
+        return f.compilerNode.expression['escapedText'].trim();
       } else {
-        return f.compilerNode.getText().trim();
+        return f.compilerNode.expression.getText().trim();
       }
     });
 
