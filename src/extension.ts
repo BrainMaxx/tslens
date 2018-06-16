@@ -10,7 +10,7 @@ import {
   SymbolInformation,
   SymbolKind
 } from 'vscode';
-import { ClassDeclaration } from 'ts-simple-ast';
+import { ClassDeclaration, SyntaxKind } from 'ts-simple-ast';
 
 export function activate(context: ExtensionContext) {
   const provider = new TSCodeLensProvider(context);
@@ -74,30 +74,21 @@ export function activate(context: ExtensionContext) {
         let bc: ClassDeclaration;
         if (cl) {
           bc = cl.getBaseClass();
+          const methods = cl.getMethods().map(z => z.getName());
+          const props = cl.getProperties().map(z => z.getName());
+
           if (bc) {
             m.push(
               ...bc
-                .getMethods()
-                .filter(
-                  x =>
-                    cl
-                      .getMethods()
-                      .map(z => z.getName())
-                      .indexOf(x.getName()) === -1
-                )
-                .map(x => { return { label: x.getName(), description: 'Method' }})
+                .getProperties()
+                .filter(x => !x.hasModifier(SyntaxKind.PrivateKeyword) && props.indexOf(x.getName()) === -1)
+                .map(x => { return { label: x.getName(), description: 'Property' }})
             );
             m.push(
               ...bc
-                .getProperties()
-                .filter(
-                  x =>
-                    cl
-                      .getProperties()
-                      .map(z => z.getName())
-                      .indexOf(x.getName()) === -1
-                )
-                .map(x => { return { label: x.getName(), description: 'Property' }})
+                .getMethods()
+                .filter(x => !x.hasModifier(SyntaxKind.PrivateKeyword) && methods.indexOf(x.getName()) === -1)
+                .map(x => { return { label: x.getName(), description: 'Method' }})
             );
           }
         }

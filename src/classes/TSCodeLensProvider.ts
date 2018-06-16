@@ -237,7 +237,13 @@ export class TSCodeLensProvider implements CodeLensProvider {
       })
       .selectMany(x => x);
 
-    const names = filters.map(f => f.compilerNode.expression.getText().trim());
+    const names = filters.map(f => {
+      if(f.compilerNode.expression['name']) {
+        return f.compilerNode.expression['name'].escapedText.trim();
+      } else {
+        return f.compilerNode.getText().trim();
+      }
+    });
 
     // var includes = enu.from(members).where(x => names.indexOf((x['interface'] as InterfaceDeclaration).getName()) > -1)
     // .select(x => {
