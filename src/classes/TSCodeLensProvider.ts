@@ -24,7 +24,9 @@ import {
   PropertySignature,
   MethodSignature,
   PropertyDeclaration,
-  MethodDeclaration
+  MethodDeclaration,
+  SyntaxKind,
+  TypeElementTypes
 } from 'ts-simple-ast';
 
 import minimatch = require('minimatch');
@@ -69,8 +71,21 @@ export class TSCodeLensProvider implements CodeLensProvider {
     TSDecoration
   >();
 
+  private classCache: Map<string, ClassMemberTypes[]> = new Map<
+    string,
+    ClassMemberTypes[]
+  >();
+  interfaces: Array<InterfaceDeclaration>;
+
   constructor(private context: ExtensionContext) {
     this.config = new AppConfiguration();
+    this.interfaces = enu
+      .from(this.config.project.getSourceFiles())
+      .select(x => x.getInterfaces())
+      .where(x => x.length > 0)
+      .selectMany(x => x)
+      .toArray();
+
   }
 
   clearDecorations(set: Map<string, TSDecoration>) {
@@ -188,21 +203,74 @@ export class TSCodeLensProvider implements CodeLensProvider {
       });
   }
 
-  getClassMembers(cl: ClassDeclaration, arr?: ClassMemberTypes[]) {
-    arr = arr || [];
+  findInterfaceByName(x: ExpressionWithTypeArguments) {
+    return enu.from(this.interfaces).firstOrDefault(
+      z => z.getName() === this.getInterfaceName(x)
+    );
+  }
+
+  updateInterfaces(locations: Location[]) {
+    enu
+    .from(locations)
+    .select(x => x.uri.fsPath)
+    .distinct()
+      .forEach(p => {
+        const interfaces = this.getInterfacesAtPath(p);
+        if(!enu.from(this.interfaces).any(x => x.getSourceFile().getFilePath() === p)) {
+          this.interfaces.push(...interfaces);
+        }
+      });
+  }
+
+  getClassImplements(cl: ClassDeclaration) {
+    return enu
+      .from(cl.getImplements())
+      .select(x => this.findInterfaceByName(x))
+      .where(x => !!x)
+      .select(x => [x, ...x.getExtends().map(z => this.findInterfaceByName(z))])
+      .selectMany(x => x)
+      .where(x => !!x)
+      .select(x => {
+        let mem = x.getMembers();
+        mem.forEach(z => (z['interface'] = x));
+        return mem;
+      })
+      .selectMany(x => x)
+      .toArray();
+  }
+
+  getClassMembers(
+    cl: ClassDeclaration,
+    arr?: Array<ClassMemberTypes | TypeElementTypes>
+  ): Array<ClassMemberTypes | TypeElementTypes> {
+    // const key = `${cl.compilerNode.name.escapedText}_${cl.getSourceFile().getFilePath()}`;
+    // if(this.classCache.has(key)) {
+    //   return this.classCache.get(key);
+    // }
+
+    arr = arr || this.getClassImplements(cl);
     const bc = cl.getBaseClass();
     if (bc) {
       const methods = bc.getMembers();
+
       methods.forEach(x => (x['baseClass'] = bc));
-      arr.push(...methods, ...this.getClassMembers(bc, methods));
+      arr.push(
+        ...this.getClassImplements(bc),
+        ...methods,
+        ...this.getClassMembers(bc, methods)
+      );
+
+      //this.classCache.set(key, arr);
+
       return arr;
     } else {
-      return [];
+      return this.getClassImplements(cl);
     }
   }
 
   getInterfacesAtPath(path: string): InterfaceDeclaration[] {
     const file = this.config.project.getSourceFile(path);
+
     return enu
       .from(file.getNamespaces())
       .select(x => x.getInterfaces())
@@ -211,122 +279,15 @@ export class TSCodeLensProvider implements CodeLensProvider {
       .toArray();
   }
 
-  getImplemetsMembers(
-    locations: Location[],
-    filters?: ExpressionWithTypeArguments[]
-  ): Array<PropertySignature | MethodSignature> {
-    const allInterfaces = enu
-      .from(locations)
-      .select(x => x.uri.fsPath)
-      .distinct()
-      .select(p => {
-        const interfaces = this.getInterfacesAtPath(p);
-        return interfaces;
-      })
-      .selectMany(x => x)
-      .distinct(x => x.getName());
-
-    let members = allInterfaces
-      .select(x => {
-        let imembers = x.getMembers();
-        imembers = imembers.filter(
-          f => f instanceof PropertySignature || f instanceof MethodSignature
-        );
-        imembers.forEach(m => (m['interface'] = x));
-        return imembers as Array<PropertySignature | MethodSignature>;
-      })
-      .selectMany(x => x);
-
-    const names = filters.map(f => {
-      if(f.compilerNode.expression['name']) {
-        return f.compilerNode.expression['name'].escapedText.trim();
-      } else if (f.compilerNode.expression['escapedText']) {
-        return f.compilerNode.expression['escapedText'].trim();
-      } else {
-        return f.compilerNode.expression.getText().trim();
-      }
-    });
-
-    // var includes = enu.from(members).where(x => names.indexOf((x['interface'] as InterfaceDeclaration).getName()) > -1)
-    // .select(x => {
-    //   const intf = x['interface'] as InterfaceDeclaration;
-    //   return [intf.getName(), ...intf.getExtends().map(x => x.compilerNode.expression.getText().trim())]
-    // })
-    // .selectMany(x => x)
-    // .distinct();
-
-    var includes = allInterfaces
-      .where(x => names.indexOf(x.getName()) > -1)
-      .select(intf => {
-        return [
-          intf.getName(),
-          ...intf
-            .getExtends()
-            .map(x => x.compilerNode.expression.getText().trim())
-        ];
-      })
-      .selectMany(x => x)
-      .distinct();
-
-    members = members.where(x => {
-      const intf = x['interface'] as InterfaceDeclaration;
-      return includes.any(x => x === intf.getName());
-    });
-
-    return members.toArray();
+  getInterfaceName(f: ExpressionWithTypeArguments) {
+    if (f.compilerNode.expression['name']) {
+      return f.compilerNode.expression['name'].escapedText.trim();
+    } else if (f.compilerNode.expression['escapedText']) {
+      return f.compilerNode.expression['escapedText'].trim();
+    } else {
+      return f.compilerNode.expression.getText().trim();
+    }
   }
-
-  // extractClassInfo(file: SourceFile, className: string) {
-  //   var cl = file.getClass(className);
-
-  //   if (cl) {
-  //     const bm = this.getClassMembers(cl).filter(
-  //       x =>
-  //         x instanceof PropertyDeclaration ||
-  //         x instanceof MethodDeclaration
-  //     ) as Array<PropertyDeclaration | MethodDeclaration>;
-  //     const names = bm.map(x => x.getName());
-
-  //     const members = [];
-  //     const impl = cl.getImplements();
-  //     for (let index = 0; index < impl.length; index++) {
-  //       const i = impl[index];
-
-  //       enu
-  //         .from(nonBlackBoxedLocations)
-  //         .distinct(x => x.uri.fsPath)
-  //         .forEach(p => {
-  //           const interfaces = project
-  //             .getSourceFile(p.uri.fsPath)
-  //             .getInterfaces();
-  //           interfaces.forEach(x => {
-  //             const imembers = x.getMembers();
-  //             imembers.forEach(m => (m['interface'] = x));
-  //             members.push(...imembers);
-  //           });
-  //         });
-  //     }
-
-  //     const isInterface =
-  //       members.map(x => x.getName()).indexOf(testM) > -1;
-  //     const isClassed = names.indexOf(testM) > -1;
-
-  //     if (!isClassed && !isInterface) {
-  //       const keysForDelete = [];
-  //       this.overrideDecorations.forEach((value, key, x) => {
-  //         if (
-  //           key.startsWith(codeLens.uri.fsPath) &&
-  //           key.endsWith(testM)
-  //         ) {
-  //           value.decoration.dispose();
-  //           keysForDelete.push(key);
-  //         }
-  //       });
-  //       keysForDelete.forEach(x =>
-  //         this.overrideDecorations.delete(x)
-  //       );
-  //     }
-  // }
 
   async resolveCodeLens(
     codeLens: CodeLens,
@@ -337,9 +298,6 @@ export class TSCodeLensProvider implements CodeLensProvider {
         window.activeTextEditor.document.fileName
       );
 
-      // const locations = await commands.executeCommand<Location[]>('vscode.executeReferenceProvider', codeLens.uri, codeLens.range.start);
-      // const symbols = await commands.executeCommand<SymbolInformation[]>('vscode.executeDocumentSymbolProvider', vscode.window.activeTextEditor.document.uri);
-
       const res = await Promise.all([
         commands.executeCommand<Location[]>(
           'vscode.executeReferenceProvider',
@@ -348,7 +306,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
         ),
         commands.executeCommand<SymbolInformation[]>(
           'vscode.executeDocumentSymbolProvider',
-          window.activeTextEditor.document.uri
+          codeLens.uri
         )
       ]);
 
@@ -370,6 +328,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
           return new minimatch.Minimatch(pattern).match(fileName);
         });
       });
+      this.updateInterfaces(nonBlackBoxedLocations);
 
       var isSameDocument = codeLens.uri == window.activeTextEditor.document.uri;
       var message;
@@ -406,22 +365,30 @@ export class TSCodeLensProvider implements CodeLensProvider {
           var cl = file.getClass(filtered.containerName);
 
           if (cl) {
-            const bm = this.getClassMembers(cl).filter(
+            const members = this.getClassMembers(cl);
+
+            const classMembers = members.filter(
               x =>
                 x instanceof PropertyDeclaration ||
                 x instanceof MethodDeclaration
             ) as Array<PropertyDeclaration | MethodDeclaration>;
-            const names = bm.map(x => x.getName());
 
-            const impls = cl.getImplements();
-            const members =
-              impls.length > 0
-                ? this.getImplemetsMembers(nonBlackBoxedLocations, impls)
-                : [];
+            const interfaceMembers = members.filter(
+              x =>
+                x instanceof PropertySignature || x instanceof MethodSignature
+            ) as Array<PropertySignature | MethodSignature>;
 
-            const isInterface =
-              members.map(x => x.getName()).indexOf(testM) > -1;
-            const isClassed = names.indexOf(testM) > -1;
+            const classInd = classMembers
+            .filter(x => x.getName() === testM)
+            .map(x => (x['baseClass'] as ClassDeclaration).getName());
+            const interfaceInd = interfaceMembers
+            .filter(x => x.getName() === testM)
+            .map(x =>
+              (x['interface'] as InterfaceDeclaration).getName()
+            );
+            
+            const isClassed = classInd.length > 0;
+            const isInterface = interfaceInd.length > 0;
 
             if (!isClassed && !isInterface) {
               const keysForDelete = [];
@@ -443,11 +410,11 @@ export class TSCodeLensProvider implements CodeLensProvider {
             if (isClassed || isInterface) {
               var editor = window.activeTextEditor;
               if (editor != null) {
-                const gutterType = isInterface
-                  ? 'implementInterface'
-                  : filtered.kind === SymbolKind.Method
+                const gutterType = isClassed
+                  ? filtered.kind === SymbolKind.Method
                     ? 'methodEdit'
-                    : 'fieldEdit';
+                    : 'fieldEdit'
+                  : 'implementInterface';
                 const key = `${codeLens.uri.fsPath}_${
                   codeLens.range.start.line
                 }_${testM}`;
@@ -465,11 +432,11 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
                   overrideDecoration.decoration = window.createTextEditorDecorationType(
                     {
-                      backgroundColor: isInterface
-                        ? 'rgba(144, 192, 2, 0.35)'
-                        : filtered.kind === SymbolKind.Method
+                      backgroundColor: isClassed
+                        ? filtered.kind === SymbolKind.Method
                           ? 'rgba(209, 0, 0, 0.35)'
-                          : 'rgba(0, 123, 168, 0.35)',
+                          : 'rgba(0, 123, 168, 0.35)'
+                        : 'rgba(144, 192, 2, 0.35)',
                       gutterIconPath: this.context.asAbsolutePath(
                         `images/${gutterType}.svg`
                       )
@@ -481,26 +448,14 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
                 isInherited = true;
 
-                if (isInterface) {
+                if (isClassed) {
                   inheritedBase = enu
-                    .from(
-                      members
-                        .filter(x => x.getName() === testM)
-                        .map(x =>
-                          (x['interface'] as InterfaceDeclaration).getName()
-                        )
-                    )
+                    .from(classInd)
                     .distinct()
                     .toJoinedString(' < ');
-                } else if (isClassed) {
+                } else if (isInterface) {
                   inheritedBase = enu
-                    .from(
-                      bm
-                        .filter(x => x.getName() === testM)
-                        .map(x =>
-                          (x['baseClass'] as ClassDeclaration).getName()
-                        )
-                    )
+                    .from(interfaceInd)
                     .distinct()
                     .toJoinedString(' < ');
                 }
@@ -509,34 +464,6 @@ export class TSCodeLensProvider implements CodeLensProvider {
           }
         }
       }
-
-      //   let declar;
-      //   switch(filtered.kind) {
-      //     case SymbolKind.Class:
-      //       declar = 'class';break;
-      //       case SymbolKind.Interface:
-      //       declar = 'interface';break;
-      //       case SymbolKind.Method:
-      //       declar = 'method';break;
-      //   }
-      //   const key = `${
-      //     codeLens.uri.fsPath
-      //   }_${codeLens.range.start.line}_${testM}`;
-      //   if(declar && !this.overrideDecorations.has(key)) {
-
-      //   var overrideDecoration = new TSDecoration();
-      //   this.overrideDecorations.set(key, overrideDecoration);
-
-      //   overrideDecoration.decoration = vscode.window.createTextEditorDecorationType(
-      //     {
-      //       gutterIconPath: context.asAbsolutePath(
-      //         `images/${declar}.svg`
-      //       )
-      //     }
-      //   );
-
-      //   overrideDecoration.ranges.push(codeLens.range);
-      // }
 
       if (isInherited) {
         message += ' :: ' + inheritedBase;
