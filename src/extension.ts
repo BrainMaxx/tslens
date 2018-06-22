@@ -16,24 +16,33 @@ export function activate(context: ExtensionContext) {
   const provider = new TSCodeLensProvider(context);
 
   function updateTextEditor() {
+    const filePath = window.activeTextEditor.document.fileName; 
     const file = provider.config.project.getSourceFile(
-      window.activeTextEditor.document.fileName
+      filePath
     );
+    const del = [];
+    provider.classCache.forEach((v, k, map) => {
+      if(k.endsWith(filePath.replace(/\\/g, '/').substring(1))) {
+        del.push(k);
+      }
+    });
+    del.forEach(x => provider.classCache.delete(x));
+    
     file.refreshFromFileSystem().then(() => triggerCodeLensComputation());
     //this.clearDecorations(this.overrideDecorations);
   }
 
   const triggerCodeLensComputation = () => {
-    if (!window.activeTextEditor) return;
+    // if (!window.activeTextEditor) return;
 
-    var end = window.activeTextEditor.selection.end;
-    window.activeTextEditor
-      .edit(editbuilder => {
-        editbuilder.insert(end, ' ');
-      })
-      .then(() => {
-        commands.executeCommand('undo');
-      });
+    // var end = window.activeTextEditor.selection.end;
+    // window.activeTextEditor
+    //   .edit(editbuilder => {
+    //     editbuilder.insert(end, ' ');
+    //   })
+    //   .then(() => {
+    //     commands.executeCommand('undo');
+    //   });
   };
   const disposables: Disposable[] = context.subscriptions;
   const self = this;
