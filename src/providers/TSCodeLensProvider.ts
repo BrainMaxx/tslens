@@ -169,8 +169,15 @@ export class TSCodeLensProvider implements CodeLensProvider {
           filtered.kind === SymbolKind.Field ||
           filtered.kind === SymbolKind.Property
         ) {
-          var cl = file.getClass(filtered.containerName);
 
+          const ns = file.getNamespaces();
+          let cl;
+          if(ns.length > 0) {
+            cl = enu.from(ns).select(x => x.getClass(filtered.containerName)).where(x => !!x).firstOrDefault();
+          }else {
+            cl = file.getClass(filtered.containerName);
+          }
+          
           if (cl) {
             let members = [];
             const key = `${cl.getName()}_${cl.getSourceFile().getFilePath()}`;
