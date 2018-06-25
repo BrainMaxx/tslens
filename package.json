@@ -3,7 +3,7 @@
   "displayName": "TSLens",
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "MaxGotovkin",
   "author": "MaxGotovkin",
   "license": "MIT",
@@ -45,6 +45,16 @@
       "type": "object",
       "title": "TSLens configuration",
       "properties": {
+        "tslens.showReferences": {
+          "default": true,
+          "description": "A flag which indicates whether the references infos should be shown",
+          "type": "boolean"
+        },
+        "tslens.showBaseMemberInfo": {
+          "default": true,
+          "description": "A flag which indicates whether the inheritance infos should be shown",
+          "type": "boolean"
+        },
         "tslens.excludeself": {
           "default": true,
           "description": "A flag which indicates whether the initiating reference should be excluded",
@@ -83,6 +93,21 @@
         "tslens.unusedcolor": {
           "default": "#999",
           "description": "Color for unused references",
+          "type": "string"
+        },
+        "tslens.methodOverrideColor": {
+          "default": "rgba(209,0,0,0.35)",
+          "description": "Color for method override",
+          "type": "string"
+        },
+        "tslens.fieldOverrideColor": {
+          "default": "rgba(0, 123, 168, 0.35)",
+          "description": "Color for field override",
+          "type": "string"
+        },
+        "tslens.interfaceImplementationColor": {
+          "default": "rgba(144, 192, 2, 0.35)",
+          "description": "Color for interface implementation",
           "type": "string"
         }
       }

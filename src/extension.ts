@@ -1,5 +1,4 @@
 'use strict';
-import { TSCodeLensProvider } from './classes/TSCodeLensProvider';
 import {
   commands,
   window,
@@ -8,28 +7,92 @@ import {
   Disposable,
   workspace,
   SymbolInformation,
-  SymbolKind
+  SymbolKind,
+  TextDocument,
+  CancellationToken,
+  CodeLens,
+  Range,
+  Uri,
+  TextEditorRevealType
 } from 'vscode';
 import { ClassDeclaration, SyntaxKind } from 'ts-simple-ast';
+import { MethodReferenceLens } from './classes/MethodReferenceLens';
+import { TSCodeRefProvider } from './providers/TSCodeRefProvider';
+import { TSCodeLensProvider } from './providers/TSCodeLensProvider';
+
+export function provider(document: TextDocument, token: CancellationToken): CodeLens[] | PromiseLike<CodeLens[]> {
+  return commands
+    .executeCommand<SymbolInformation[]>(
+      'vscode.executeDocumentSymbolProvider',
+      document.uri
+    )
+    .then(symbolInformations => {
+      var usedPositions = [];
+      return symbolInformations
+        .map(symbolInformation => {
+          var index;
+          var lineIndex = symbolInformation.location.range.start.line;
+          do {
+            var range = symbolInformation.location.range;
+            var line = document.lineAt(lineIndex);
+            index = line.text.lastIndexOf(symbolInformation.name);
+            if (index > -1) {
+              break;
+            }
+            lineIndex++;
+          } while (lineIndex <= symbolInformation.location.range.end.line);
+
+          if (symbolInformation.name == '<function>') {
+            range = null;
+          } else if (index == -1) {
+            var line = document.lineAt(
+              symbolInformation.location.range.start.line
+            );
+            index = line.firstNonWhitespaceCharacterIndex;
+            lineIndex = range.start.line;
+            range = new Range(lineIndex, index, lineIndex, 90000);
+          } else {
+            range = new Range(
+              lineIndex,
+              index,
+              lineIndex,
+              index + symbolInformation.name.length
+            );
+          }
+          if (range) {
+            var position = document.offsetAt(range.start);
+            if (!usedPositions[position]) {
+              usedPositions[position] = 1;
+              return new MethodReferenceLens(
+                new Range(range.start, range.end),
+                document.uri
+              );
+            }
+          }
+        })
+        .filter(item => item != null);
+    });
+}
 
 export function activate(context: ExtensionContext) {
-  const provider = new TSCodeLensProvider(context);
+  const refProvider = new TSCodeLensProvider(provider, context);
+  const ref2Provider = new TSCodeRefProvider(provider, context);
 
   function updateTextEditor() {
     const filePath = window.activeTextEditor.document.fileName; 
-    const file = provider.config.project.getSourceFile(
+    const file = refProvider.config.project.getSourceFile(
       filePath
     );
     const del = [];
-    provider.classCache.forEach((v, k, map) => {
+    refProvider.classCache.forEach((v, k, map) => {
       if(k.endsWith(filePath.replace(/\\/g, '/').substring(1))) {
         del.push(k);
       }
     });
-    del.forEach(x => provider.classCache.delete(x));
+    del.forEach(x => refProvider.classCache.delete(x));
     
-    file.refreshFromFileSystem().then(() => triggerCodeLensComputation());
-    //this.clearDecorations(this.overrideDecorations);
+    file.refreshFromFileSystem();
+    //refProvider.clearDecorations(refProvider.overrideDecorations);
   }
 
   const triggerCodeLensComputation = () => {
@@ -47,13 +110,16 @@ export function activate(context: ExtensionContext) {
   const disposables: Disposable[] = context.subscriptions;
   const self = this;
   disposables.push(
-    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, provider)
+    //languages.registerCodeLensProvider({ pattern: '**/*.ts' }, navProvider),
+    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, refProvider),
+    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, ref2Provider)
+    
   );
   disposables.push(
     window.onDidChangeActiveTextEditor(editor => {
       if (editor) {
         updateTextEditor();
-        provider.updateDecorations(editor.document.uri);
+        refProvider.updateDecorations(editor.document.uri);
       }
     }),
     workspace.onDidSaveTextDocument(updateTextEditor)
@@ -64,9 +130,16 @@ export function activate(context: ExtensionContext) {
     })
   );
   disposables.push(
+    commands.registerCommand('tslens.gotoFile', (filePath: string, line: number) => {
+      workspace.openTextDocument(filePath).then(doc => {
+         window.showTextDocument(doc).then(e => e.revealRange(new Range(line, 0, line + 1, 0), TextEditorRevealType.InCenter));
+      });
+    })
+  );
+  disposables.push(
     commands.registerCommand('tslens.showOverrides', async () => {
       var pos = window.activeTextEditor.selection.active;
-      const f = provider.config.project.getSourceFile(
+      const f = refProvider.config.project.getSourceFile(
         window.activeTextEditor.document.fileName
       );
 

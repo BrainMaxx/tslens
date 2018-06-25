@@ -7,8 +7,15 @@ Inspired by tslens extension.
 Still under development, but basic functionality is working)
 
 ## Works like this:
-![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot.png)
 ![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot2.png)
+
+Supports complex inheritance info like this (navigation also supported): 
+
+![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot3.png)
+
+**TSLens: Show override candidates** command opens the list of possible base class members for override: 
+
+![Example code with code highlights lens](https://raw.githubusercontent.com/BrainMaxx/tslens/master/screenshot4.png)
 
 ## Supported gutters:
 - ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png) - interface implementation
@@ -21,6 +28,16 @@ Still under development, but basic functionality is working)
 - **TSLens: Show override candidates** - if cursor inside some class that extends some other, shows override candidates from the base class and adds them
 
 ## Configuration properties
+- tslens.showReferences
+  - A flag which indicates whether the references infos should be shown
+- tslens.showBaseMemberInfo
+  - A flag which indicates whether the inheritance infos should be shown
+- tslens.methodOverrideColor
+  - Color for method override
+- tslens.fieldOverrideColor
+  - Color for field override
+- tslens.interfaceImplementationColor
+  - Color for interface implementation
 
 - tslens.blackboxTitle
   - Localization for the case where the only usages are from blackboxed sources

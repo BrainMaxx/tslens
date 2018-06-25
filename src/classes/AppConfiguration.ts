@@ -23,8 +23,6 @@ export class AppConfiguration {
     return 'TSLens';
   }
 
-  public TSLensEnabled: boolean = true;
-
   get settings(): TSLensConfiguration {
     if (!this.cachedSettings) {
       var settings = vscode.workspace.getConfiguration(this.extensionName);
