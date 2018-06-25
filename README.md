@@ -19,8 +19,10 @@ Supports complex inheritance info like this (navigation also supported):
 
 ## Supported gutters:
 - ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/implementInterface.png) - interface implementation
-- ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/methodEdit.png) - method override
-- ![interface](https://raw.githubusercontent.com/BrainMaxx/tslens/master/fieldEdit.png) - field override
+- ![method](https://raw.githubusercontent.com/BrainMaxx/tslens/master/methodEdit.png) - method override
+- ![field](https://raw.githubusercontent.com/BrainMaxx/tslens/master/fieldEdit.png) - field override
+- ![interface method](https://raw.githubusercontent.com/BrainMaxx/tslens/master/interfaceMethodEdit.png) - interface method override
+- ![interface field](https://raw.githubusercontent.com/BrainMaxx/tslens/master/interfaceFieldEdit.png) - interface field override
 
 ## Supported commands:
 

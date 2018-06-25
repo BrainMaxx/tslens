@@ -372,8 +372,8 @@ export class TSCodeLensProvider implements CodeLensProvider {
           if (editor != null) {
             const gutterType = isClassed
               ? filtered.kind === SymbolKind.Method
-                ? 'methodEdit'
-                : 'fieldEdit'
+                ? (isInterface ? 'interfaceMethodEdit' : 'methodEdit')
+                : (isInterface ? 'interfaceFieldEdit' :'fieldEdit')
               : 'implementInterface';
             const key = `${codeLens.uri.fsPath}_${
               codeLens.range.start.line
