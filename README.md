@@ -32,6 +32,8 @@ Supports complex inheritance info like this (navigation also supported):
 ## Configuration properties
 - tslens.showReferences
   - A flag which indicates whether the references infos should be shown
+- tslens.referencesTypes
+  - Types of symbol as numbers from [SymbolKind](https://github.com/Microsoft/vscode/blob/0532c31e4c1eee343aec19b55672c2d79b51f6f4/src/vs/editor/common/modes.ts#L585) enum that should be analyzed for references
 - tslens.showBaseMemberInfo
   - A flag which indicates whether the inheritance infos should be shown
 - tslens.methodOverrideColor

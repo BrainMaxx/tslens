@@ -71,7 +71,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
     private provider: (
       document: TextDocument,
       token: CancellationToken
-    ) => CodeLens[] | PromiseLike<CodeLens[]>,
+    ) => PromiseLike<MethodReferenceLens[]>,
     private context: ExtensionContext
   ) {
     this.config = new AppConfiguration();
@@ -128,10 +128,10 @@ export class TSCodeLensProvider implements CodeLensProvider {
       const file = this.config.project.getSourceFile(
         window.activeTextEditor.document.fileName
       );
-      const testM = window.activeTextEditor.document.getText(codeLens.range);
+      const testName = window.activeTextEditor.document.getText(codeLens.range);
 
       let isChanged: boolean = codeLens.isChanged;
-      let filtered: SymbolInformation = codeLens.symbolInfo;
+      let symbol: SymbolInformation = codeLens.symbolInfo;
       if (analyzeSymbols) {
         const res = await Promise.all([
           commands.executeCommand<Location[]>(
@@ -170,36 +170,36 @@ export class TSCodeLensProvider implements CodeLensProvider {
             .map(x => x.getModuleSpecifierSourceFile().getFilePath())
         ]);
 
-        filtered = symbols.find(
+        symbol = symbols.find(
           x =>
             x.location.range.start.line === codeLens.range.start.line &&
-            testM === x.name
+            testName === x.name
         );
       }
 
-      if (this.config.project && filtered) {
+      if (this.config.project && symbol) {
         if (
-          filtered.kind === SymbolKind.Method ||
-          filtered.kind === SymbolKind.Field ||
-          filtered.kind === SymbolKind.Property
+          symbol.kind === SymbolKind.Method ||
+          symbol.kind === SymbolKind.Field ||
+          symbol.kind === SymbolKind.Property
         ) {
 
           const ns = file.getNamespaces();
-          let cl;
+          let parentClass;
           if (ns.length > 0) {
-            cl = enu.from(ns).select(x => x.getClass(filtered.containerName)).where(x => !!x).firstOrDefault();
+            parentClass = enu.from(ns).select(x => x.getClass(symbol.containerName)).where(x => !!x).firstOrDefault();
           } else {
-            cl = file.getClass(filtered.containerName);
+            parentClass = file.getClass(symbol.containerName);
           }
 
-          if (cl) {
+          if (parentClass) {
             let members = [];
-            const key = `${cl.getName()}_${cl.getSourceFile().getFilePath()}`;
+            const key = `${parentClass.getName()}_${parentClass.getSourceFile().getFilePath()}`;
             if (this.classCache.has(key) && !isChanged) {
               members = this.classCache.get(key);
             } else {
               try {
-                members = this.getClassMembers(cl);
+                members = this.getClassMembers(parentClass);
                 this.classCache.set(key, members);
               } catch (error) {
                 console.log(error);
@@ -217,9 +217,9 @@ export class TSCodeLensProvider implements CodeLensProvider {
                 x instanceof PropertySignature || x instanceof MethodSignature
             ) as Array<PropertySignature | MethodSignature>;
 
-            const classInd = classMembers.filter(x => x.getName() === testM);
+            const classInd = classMembers.filter(x => x.getName() === testName);
             const interfaceInd = interfaceMembers.filter(
-              x => x.getName() === testM
+              x => x.getName() === testName
             );
 
             const isClassed = classInd.length > 0;
@@ -246,8 +246,8 @@ export class TSCodeLensProvider implements CodeLensProvider {
               codeLens.isInterface = isInterface;
               codeLens.interfaceInd = interfaceInd;
               codeLens.classInd = classInd;
-              codeLens.testName = testM;
-              codeLens.symbolInfo = filtered;
+              codeLens.testName = testName;
+              codeLens.symbolInfo = symbol;
               codeLens.isChanged = isChanged;
               return true;
             }

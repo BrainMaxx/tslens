@@ -3,7 +3,7 @@
   "displayName": "TSLens",
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "publisher": "MaxGotovkin",
   "author": "MaxGotovkin",
   "license": "MIT",
@@ -109,6 +109,11 @@
           "default": "rgba(144, 192, 2, 0.35)",
           "description": "Color for interface implementation",
           "type": "string"
+        },
+        "tslens.referencesTypes": {
+          "default": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],
+          "description": "Types of symbol (from SymbolKind enum) that should be analyzed for references",
+          "type": "array"
         }
       }
     }

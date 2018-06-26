@@ -23,7 +23,7 @@ import { TSCodeLensProvider } from './providers/TSCodeLensProvider';
 export function provider(
   document: TextDocument,
   token: CancellationToken
-): CodeLens[] | PromiseLike<CodeLens[]> {
+): PromiseLike<MethodReferenceLens[]> {
 
   try {
     return commands
@@ -70,7 +70,10 @@ export function provider(
                 usedPositions[position] = 1;
                 return new MethodReferenceLens(
                   new Range(range.start, range.end),
-                  document.uri
+                  document.uri,
+                  null,
+                  null,
+                  symbolInformation
                 );
               }
             }
@@ -79,7 +82,7 @@ export function provider(
       });
   } catch (error) {
     console.log(error);
-    return [];
+    return Promise.resolve([]);
   }
 }
 

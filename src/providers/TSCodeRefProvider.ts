@@ -60,7 +60,7 @@ import { TSDecoration } from '../classes/TSDecoration';
       string,
       TSDecoration
     >();
-    constructor(private provider: (document: TextDocument, token: CancellationToken) => CodeLens[] | PromiseLike<CodeLens[]>, private context: ExtensionContext) {
+    constructor(private provider: (document: TextDocument, token: CancellationToken) => PromiseLike<MethodReferenceLens[]>, private context: ExtensionContext) {
       this.config = new AppConfiguration();
     }
   
@@ -95,7 +95,9 @@ import { TSDecoration } from '../classes/TSDecoration';
       document: TextDocument,
       token: CancellationToken
     ): CodeLens[] | Thenable<CodeLens[]> {
-      return this.config.settings.showReferences ? this.provider(document, token) : [];
+      return this.config.settings.showReferences ? this.provider(document, token).then(x => {
+        return x.filter(f => !!this.config.settings.referencesTypes.find(z => z === f.symbolInfo.kind));
+      }) : [];
     }
     async resolveCodeLens(
       codeLens: CodeLens,
