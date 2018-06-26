@@ -100,7 +100,7 @@ export function activate(context: ExtensionContext) {
       });
       del.forEach(x => refProvider.classCache.delete(x));
 
-      file.refreshFromFileSystem();
+      file.refreshFromFileSystem().then(x => refProvider.initInterfaces());
     }
     //refProvider.clearDecorations(refProvider.overrideDecorations);
   }

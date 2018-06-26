@@ -75,12 +75,24 @@ export class TSCodeLensProvider implements CodeLensProvider {
     private context: ExtensionContext
   ) {
     this.config = new AppConfiguration();
+    this.initInterfaces();
+  }
+
+  initInterfaces() {
     this.interfaces = enu
-      .from(this.config.project.getSourceFiles())
-      .select(x => x.getInterfaces())
-      .where(x => x.length > 0)
-      .selectMany(x => x)
-      .toArray();
+    .from(this.config.project.getSourceFiles())
+    .select(x => {
+      const ns = x.getNamespaces();
+      if (ns.length > 0) {
+        return ns.map(m => m.getInterfaces());
+      } else {
+        return [x.getInterfaces()];
+      }
+    })
+    .selectMany(x => x)
+    .where(x => x.length > 0)
+    .selectMany(x => x)
+    .toArray();
   }
 
   clearDecorations(set: Map<string, TSDecoration>) {
