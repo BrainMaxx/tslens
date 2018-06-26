@@ -3,6 +3,7 @@
 A VSCode plugin for **typescript** which adds reference code lenses, highlights, gutter icons for interfaces/classes methods/properties implementations and overrides.
 
 Useful in development and analyzing big projects on Typescript.
+
 Works on the top of Typescript AST
 
 ## Works like this:
