@@ -20,7 +20,7 @@ export class AppConfiguration {
   }
 
   get extensionName() {
-    return 'TSLens';
+    return 'tslens';
   }
 
   get settings(): TSLensConfiguration {
