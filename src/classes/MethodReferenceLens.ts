@@ -14,6 +14,7 @@ export class MethodReferenceLens extends CodeLens {
   testName: any;
   classInd: any;
   interfaceInd: any;
+  isChanged: boolean;
 
   constructor(range: Range, uri: Uri, command?: Command, decoration?: TSDecoration) {
     super(range, command);

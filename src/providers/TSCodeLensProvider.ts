@@ -59,12 +59,12 @@ export class TSCodeLensProvider implements CodeLensProvider {
   overrideDecorations: Map<string, TSDecoration> = new Map<
     string,
     TSDecoration
-  >();
+    >();
 
   classCache: Map<string, Array<ClassMemberTypes | TypeElementTypes>> = new Map<
     string,
     Array<ClassMemberTypes | TypeElementTypes>
-  >();
+    >();
   interfaces: Array<InterfaceDeclaration>;
 
   constructor(
@@ -111,57 +111,59 @@ export class TSCodeLensProvider implements CodeLensProvider {
     }
   }
 
-  async setupCodeLens(codeLens: CodeLens, force?: boolean) {
+  async setupCodeLens(codeLens: CodeLens, force?: boolean, analyzeSymbols?: boolean) {
     if (codeLens instanceof MethodReferenceLens) {
       const file = this.config.project.getSourceFile(
         window.activeTextEditor.document.fileName
       );
-
-      const res = await Promise.all([
-        commands.executeCommand<Location[]>(
-          'vscode.executeReferenceProvider',
-          codeLens.uri,
-          codeLens.range.start
-        ),
-        commands.executeCommand<SymbolInformation[]>(
-          'vscode.executeDocumentSymbolProvider',
-          codeLens.uri
-        )
-      ]);
-
-      const locations = res[0];
-      const symbols = res[1];
-
-      var settings = this.config.settings;
-      var filteredLocations = locations;
-      if (settings.excludeself) {
-        filteredLocations = locations.filter(
-          location => !location.range.isEqual(codeLens.range)
-        );
-      }
-
-      const blackboxList = this.config.settings.blackbox || [];
-      const nonBlackBoxedLocations = filteredLocations.filter(location => {
-        const fileName = location.uri.path;
-        return !blackboxList.some(pattern => {
-          return new minimatch.Minimatch(pattern).match(fileName);
-        });
-      });
-
       const testM = window.activeTextEditor.document.getText(codeLens.range);
 
-      const isChanged = this.updateInterfaces([
-        ...nonBlackBoxedLocations.map(x => x.uri.fsPath),
-        ...file
-          .getImportDeclarations()
-          .map(x => x.getModuleSpecifierSourceFile().getFilePath())
-      ]);
+      let isChanged: boolean = codeLens.isChanged;
+      let filtered: SymbolInformation = codeLens.symbolInfo;
+      if (analyzeSymbols) {
+        const res = await Promise.all([
+          commands.executeCommand<Location[]>(
+            'vscode.executeReferenceProvider',
+            codeLens.uri,
+            codeLens.range.start
+          ),
+          commands.executeCommand<SymbolInformation[]>(
+            'vscode.executeDocumentSymbolProvider',
+            codeLens.uri
+          )
+        ]);
 
-      const filtered = symbols.find(
-        x =>
-          x.location.range.start.line === codeLens.range.start.line &&
-          testM === x.name
-      );
+        const locations = res[0];
+        const symbols = res[1];
+
+        var settings = this.config.settings;
+        var filteredLocations = locations;
+        if (settings.excludeself) {
+          filteredLocations = locations.filter(
+            location => !location.range.isEqual(codeLens.range)
+          );
+        }
+
+        const blackboxList = this.config.settings.blackbox || [];
+        const nonBlackBoxedLocations = filteredLocations.filter(location => {
+          const fileName = location.uri.path;
+          return !blackboxList.some(pattern => {
+            return new minimatch.Minimatch(pattern).match(fileName);
+          });
+        });
+        isChanged = this.updateInterfaces([
+          ...nonBlackBoxedLocations.map(x => x.uri.fsPath),
+          ...file
+            .getImportDeclarations()
+            .map(x => x.getModuleSpecifierSourceFile().getFilePath())
+        ]);
+
+        filtered = symbols.find(
+          x =>
+            x.location.range.start.line === codeLens.range.start.line &&
+            testM === x.name
+        );
+      }
 
       if (this.config.project && filtered) {
         if (
@@ -172,12 +174,12 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
           const ns = file.getNamespaces();
           let cl;
-          if(ns.length > 0) {
+          if (ns.length > 0) {
             cl = enu.from(ns).select(x => x.getClass(filtered.containerName)).where(x => !!x).firstOrDefault();
-          }else {
+          } else {
             cl = file.getClass(filtered.containerName);
           }
-          
+
           if (cl) {
             let members = [];
             const key = `${cl.getName()}_${cl.getSourceFile().getFilePath()}`;
@@ -234,6 +236,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
               codeLens.classInd = classInd;
               codeLens.testName = testM;
               codeLens.symbolInfo = filtered;
+              codeLens.isChanged = isChanged;
               return true;
             }
           }
@@ -244,25 +247,6 @@ export class TSCodeLensProvider implements CodeLensProvider {
     return false;
   }
 
-  provideCodeLenses(document: TextDocument, token: CancellationToken): any {
-    return (this.provider(document, token) as Thenable<MethodReferenceLens[]>).then(
-      async codeLenses => {
-        
-        if(!this.config.settings.showBaseMemberInfo) {
-          return [];
-        }
-
-        var filterAsync = (array, filter) =>
-          Promise.all(array.map(entry => filter(entry))).then(bits =>
-            array.filter(entry => bits.shift())
-          );
-
-        const f: MethodReferenceLens[] = await filterAsync(codeLenses, x => this.setupCodeLens(x, true));
-        this.clearDecorations(this.overrideDecorations);
-        return f;
-      }
-    );
-  }
 
   findInterfaceByName(x: ExpressionWithTypeArguments) {
     const iname = this.getInterfaceName(x);
@@ -359,6 +343,26 @@ export class TSCodeLensProvider implements CodeLensProvider {
     }
   }
 
+  provideCodeLenses(document: TextDocument, token: CancellationToken): any {
+    return (this.provider(document, token) as Thenable<MethodReferenceLens[]>).then(
+      async codeLenses => {
+
+        if (!this.config.settings.showBaseMemberInfo) {
+          return [];
+        }
+
+        var filterAsync = (array, filter) =>
+          Promise.all(array.map(entry => filter(entry))).then(bits =>
+            array.filter(entry => bits.shift())
+          );
+
+        const f: MethodReferenceLens[] = await filterAsync(codeLenses, x => this.setupCodeLens(x, true, true));
+        this.clearDecorations(this.overrideDecorations);
+        return f;
+      }
+    );
+  }
+
   async resolveCodeLens(
     codeLens: CodeLens,
     token: CancellationToken
@@ -380,11 +384,11 @@ export class TSCodeLensProvider implements CodeLensProvider {
             const gutterType = isClassed
               ? filtered.kind === SymbolKind.Method
                 ? (isInterface ? 'interfaceMethodEdit' : 'methodEdit')
-                : (isInterface ? 'interfaceFieldEdit' :'fieldEdit')
+                : (isInterface ? 'interfaceFieldEdit' : 'fieldEdit')
               : 'implementInterface';
             const key = `${codeLens.uri.fsPath}_${
               codeLens.range.start.line
-            }_${testM}`;
+              }_${testM}`;
 
             let overrideDecoration;
             if (this.overrideDecorations.has(key)) {
