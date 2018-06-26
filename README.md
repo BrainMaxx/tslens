@@ -1,6 +1,6 @@
 # TSLens
 
-A VSCode plugin for **typescript** which adds reference code lenses, highlights, gutters for interfaces/classes methods implementations and overrides.
+A VSCode plugin for **typescript** which adds reference code lenses, highlights, gutter icons for interfaces/classes methods implementations and overrides.
 
 Inspired by tslens extension.
 
