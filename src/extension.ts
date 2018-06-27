@@ -87,23 +87,23 @@ export function provider(
 }
 
 export function activate(context: ExtensionContext) {
-  const refProvider = new TSCodeLensProvider(provider, context);
-  const ref2Provider = new TSCodeRefProvider(provider, context);
+  const tsProvider = new TSCodeLensProvider(provider, context);
+  const refProvider = new TSCodeRefProvider(provider, context);
 
   function updateTextEditor() {
     const filePath = window.activeTextEditor.document.fileName;
-    const file = refProvider.config.project.getSourceFile(filePath);
+    const file = tsProvider.config.project.getSourceFile(filePath);
 
     if (file) {
       const del = [];
-      refProvider.classCache.forEach((v, k, map) => {
+      tsProvider.classCache.forEach((v, k, map) => {
         if (k.endsWith(filePath.replace(/\\/g, '/').substring(1))) {
           del.push(k);
         }
       });
-      del.forEach(x => refProvider.classCache.delete(x));
+      del.forEach(x => tsProvider.classCache.delete(x));
 
-      file.refreshFromFileSystem().then(x => refProvider.initInterfaces());
+      file.refreshFromFileSystem().then(x => tsProvider.initInterfaces());
     }
     //refProvider.clearDecorations(refProvider.overrideDecorations);
   }
@@ -123,14 +123,14 @@ export function activate(context: ExtensionContext) {
   const self = this;
   disposables.push(
     //languages.registerCodeLensProvider({ pattern: '**/*.ts' }, navProvider),
-    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, refProvider),
-    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, ref2Provider)
+    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, tsProvider),
+    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, refProvider)
   );
   disposables.push(
     window.onDidChangeActiveTextEditor(editor => {
       if (editor) {
         updateTextEditor();
-        refProvider.updateDecorations(editor.document.uri);
+        tsProvider.updateDecorations(editor.document.uri);
       }
     }),
     workspace.onDidSaveTextDocument(updateTextEditor)
@@ -160,7 +160,7 @@ export function activate(context: ExtensionContext) {
   disposables.push(
     commands.registerCommand('tslens.showOverrides', async () => {
       var pos = window.activeTextEditor.selection.active;
-      const f = refProvider.config.project.getSourceFile(
+      const f = tsProvider.config.project.getSourceFile(
         window.activeTextEditor.document.fileName
       );
 

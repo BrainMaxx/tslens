@@ -1,3 +1,4 @@
+import { Utils } from './../classes/Utils';
 import {
   CodeLensProvider,
   Range,
@@ -79,21 +80,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
   }
 
   initInterfaces() {
-    this.interfaces = enu
-    .from(this.config.project.getSourceFiles())
-    .where(x => !!x)
-    .select(x => {
-      const ns = x.getNamespaces();
-      if (ns.length > 0) {
-        return ns.map(m => m.getInterfaces());
-      } else {
-        return [x.getInterfaces()];
-      }
-    })
-    .selectMany(x => x)
-    .where(x => x.length > 0)
-    .selectMany(x => x)
-    .toArray();
+    this.interfaces = Utils.getInterfaces(this.config.project);
   }
 
   clearDecorations(set: Map<string, TSDecoration>) {
@@ -117,7 +104,6 @@ export class TSCodeLensProvider implements CodeLensProvider {
   }
 
   reinitDecorations() {
-    var settings = this.config.settings;
     var editor = window.activeTextEditor;
     if (editor != null) {
       this.clearDecorations(this.overrideDecorations);
@@ -130,7 +116,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
         window.activeTextEditor.document.fileName
       );
 
-      if(!file) {
+      if (!file) {
         return false;
       }
 
@@ -169,7 +155,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
             return new minimatch.Minimatch(pattern).match(fileName);
           });
         });
-        isChanged = this.updateInterfaces([
+        isChanged = Utils.updateInterfaces(this.config.project, [
           ...nonBlackBoxedLocations.map(x => x.uri.fsPath),
           ...file
             .getImportDeclarations()
@@ -205,7 +191,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
               members = this.classCache.get(key);
             } else {
               try {
-                members = this.getClassMembers(parentClass);
+                members = Utils.getClassMembers(this.interfaces, parentClass);
                 this.classCache.set(key, members);
               } catch (error) {
                 console.log(error);
@@ -263,102 +249,6 @@ export class TSCodeLensProvider implements CodeLensProvider {
     }
 
     return false;
-  }
-
-
-  findInterfaceByName(x: ExpressionWithTypeArguments) {
-    const iname = this.getInterfaceName(x);
-    return enu.from(this.interfaces).firstOrDefault(z => {
-      try {
-        return z.getName() === iname;
-      } catch (error) {
-        return false;
-      }
-    });
-  }
-
-  updateInterfaces(locations: string[]): boolean {
-    let isChanged = false;
-    enu
-      .from(locations)
-      .distinct()
-      .forEach(p => {
-        const interfaces = this.getInterfacesAtPath(p);
-        const path = p.replace(/\\/g, '/');
-        if (
-          !enu
-            .from(this.interfaces)
-            .any(x => x.getSourceFile().getFilePath() === path) &&
-          interfaces.length > 0
-        ) {
-          this.interfaces.push(...interfaces);
-          isChanged = true;
-        }
-      });
-
-    return isChanged;
-  }
-
-  getClassImplements(cl: ClassDeclaration) {
-    return enu
-      .from(cl.getImplements())
-      .select(x => this.findInterfaceByName(x))
-      .where(x => !!x)
-      .select(x => {
-        return [x, ...x.getExtends().map(z => this.findInterfaceByName(z))];
-      })
-      .selectMany(x => x)
-      .where(x => !!x)
-      .select(x => {
-        let mem = x.getMembers();
-        mem.forEach(z => (z['interface'] = x));
-        return mem;
-      })
-      .selectMany(x => x)
-      .toArray();
-  }
-
-  getClassMembers(
-    cl: ClassDeclaration,
-    arr?: Array<ClassMemberTypes | TypeElementTypes>
-  ): Array<ClassMemberTypes | TypeElementTypes> {
-    arr = arr || this.getClassImplements(cl);
-    const bc = cl.getBaseClass();
-    if (bc) {
-      const methods = bc.getMembers();
-
-      methods.forEach(x => (x['baseClass'] = bc));
-      arr.push(
-        ...this.getClassImplements(bc),
-        ...methods,
-        ...this.getClassMembers(bc, methods)
-      );
-
-      return arr;
-    } else {
-      return this.getClassImplements(cl);
-    }
-  }
-
-  getInterfacesAtPath(path: string): InterfaceDeclaration[] {
-    const file = this.config.project.getSourceFile(path);
-
-    return file ? enu
-      .from(file.getNamespaces())
-      .select(x => x.getInterfaces())
-      .selectMany(x => x)
-      .concat(file.getInterfaces())
-      .toArray() : [];
-  }
-
-  getInterfaceName(f: ExpressionWithTypeArguments) {
-    if (f.compilerNode.expression['name']) {
-      return f.compilerNode.expression['name'].escapedText.trim();
-    } else if (f.compilerNode.expression['escapedText']) {
-      return f.compilerNode.expression['escapedText'].trim();
-    } else {
-      return f.compilerNode.expression.getText().trim();
-    }
   }
 
   provideCodeLenses(document: TextDocument, token: CancellationToken): any {
