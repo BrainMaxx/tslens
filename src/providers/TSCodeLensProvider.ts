@@ -81,6 +81,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
   initInterfaces() {
     this.interfaces = enu
     .from(this.config.project.getSourceFiles())
+    .where(x => !!x)
     .select(x => {
       const ns = x.getNamespaces();
       if (ns.length > 0) {
@@ -128,6 +129,11 @@ export class TSCodeLensProvider implements CodeLensProvider {
       const file = this.config.project.getSourceFile(
         window.activeTextEditor.document.fileName
       );
+
+      if(!file) {
+        return false;
+      }
+
       const testName = window.activeTextEditor.document.getText(codeLens.range);
 
       let isChanged: boolean = codeLens.isChanged;
@@ -337,12 +343,12 @@ export class TSCodeLensProvider implements CodeLensProvider {
   getInterfacesAtPath(path: string): InterfaceDeclaration[] {
     const file = this.config.project.getSourceFile(path);
 
-    return enu
+    return file ? enu
       .from(file.getNamespaces())
       .select(x => x.getInterfaces())
       .selectMany(x => x)
       .concat(file.getInterfaces())
-      .toArray();
+      .toArray() : [];
   }
 
   getInterfaceName(f: ExpressionWithTypeArguments) {

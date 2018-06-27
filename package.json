@@ -3,7 +3,7 @@
   "displayName": "TSLens",
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "publisher": "MaxGotovkin",
   "author": "MaxGotovkin",
   "license": "MIT",
