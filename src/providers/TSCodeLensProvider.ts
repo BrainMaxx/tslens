@@ -56,31 +56,33 @@ const SymbolKindInterst = {
 };
 
 export class TSCodeLensProvider implements CodeLensProvider {
-  config: AppConfiguration;
-  overrideDecorations: Map<string, TSDecoration> = new Map<
+  private overrideDecorations: Map<string, TSDecoration> = new Map<
     string,
     TSDecoration
-    >();
+  >();
 
-  classCache: Map<string, Array<ClassMemberTypes | TypeElementTypes>> = new Map<
+  private classCache: Map<
     string,
     Array<ClassMemberTypes | TypeElementTypes>
-    >();
-  interfaces: Array<InterfaceDeclaration>;
+  > = new Map<string, Array<ClassMemberTypes | TypeElementTypes>>();
+  private interfaces: Array<InterfaceDeclaration>;
+  public static methods: Map<string, string> = new Map();
 
   constructor(
+    private config: AppConfiguration,
     private provider: (
       document: TextDocument,
       token: CancellationToken
     ) => PromiseLike<MethodReferenceLens[]>,
     private context: ExtensionContext
   ) {
-    this.config = new AppConfiguration();
     this.initInterfaces();
   }
 
   initInterfaces() {
+    //setTimeout(() => {
     this.interfaces = Utils.getInterfaces(this.config.project);
+    //}, 1000);
   }
 
   clearDecorations(set: Map<string, TSDecoration>) {
@@ -103,14 +105,9 @@ export class TSCodeLensProvider implements CodeLensProvider {
     }
   }
 
-  reinitDecorations() {
-    var editor = window.activeTextEditor;
-    if (editor != null) {
-      this.clearDecorations(this.overrideDecorations);
-    }
-  }
+  private recheckInterfaces: boolean = true;
 
-  async setupCodeLens(codeLens: CodeLens, force?: boolean, analyzeSymbols?: boolean) {
+  private async setupCodeLens(codeLens: CodeLens, analyzeSymbols?: boolean) {
     if (codeLens instanceof MethodReferenceLens) {
       const file = this.config.project.getSourceFile(
         window.activeTextEditor.document.fileName
@@ -120,10 +117,12 @@ export class TSCodeLensProvider implements CodeLensProvider {
         return false;
       }
 
+      TSCodeLensProvider.methods = new Map();
       const testName = window.activeTextEditor.document.getText(codeLens.range);
 
       let isChanged: boolean = codeLens.isChanged;
       let symbol: SymbolInformation = codeLens.symbolInfo;
+
       if (analyzeSymbols) {
         const res = await Promise.all([
           commands.executeCommand<Location[]>(
@@ -140,6 +139,10 @@ export class TSCodeLensProvider implements CodeLensProvider {
         const locations = res[0];
         const symbols = res[1];
 
+        this.recheckInterfaces &&
+          this.initInterfaces() &&
+          (this.recheckInterfaces = false);
+
         var settings = this.config.settings;
         var filteredLocations = locations;
         if (settings.excludeself) {
@@ -155,11 +158,16 @@ export class TSCodeLensProvider implements CodeLensProvider {
             return new minimatch.Minimatch(pattern).match(fileName);
           });
         });
+
         isChanged = Utils.updateInterfaces(this.config.project, [
           ...nonBlackBoxedLocations.map(x => x.uri.fsPath),
           ...file
             .getImportDeclarations()
-            .map(x => x.getModuleSpecifierSourceFile().getFilePath())
+            .map(x => {
+              const fp = x.getModuleSpecifierSourceFile();
+              return fp && fp.getFilePath();
+            })
+            .filter(x => !!x)
         ]);
 
         symbol = symbols.find(
@@ -175,18 +183,23 @@ export class TSCodeLensProvider implements CodeLensProvider {
           symbol.kind === SymbolKind.Field ||
           symbol.kind === SymbolKind.Property
         ) {
-
           const ns = file.getNamespaces();
           let parentClass;
           if (ns.length > 0) {
-            parentClass = enu.from(ns).select(x => x.getClass(symbol.containerName)).where(x => !!x).firstOrDefault();
+            parentClass = enu
+              .from(ns)
+              .select(x => x.getClass(symbol.containerName))
+              .where(x => !!x)
+              .firstOrDefault();
           } else {
             parentClass = file.getClass(symbol.containerName);
           }
 
           if (parentClass) {
             let members = [];
-            const key = `${parentClass.getName()}_${parentClass.getSourceFile().getFilePath()}`;
+            const key = `${parentClass.getName()}_${parentClass
+              .getSourceFile()
+              .getFilePath()}`;
             if (this.classCache.has(key) && !isChanged) {
               members = this.classCache.get(key);
             } else {
@@ -198,6 +211,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
               }
             }
 
+            //let members = Utils.getClassMembers(this.interfaces, parentClass);
             const classMembers = members.filter(
               x =>
                 x instanceof PropertyDeclaration ||
@@ -216,6 +230,13 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
             const isClassed = classInd.length > 0;
             const isInterface = interfaceInd.length > 0;
+
+            if (symbol.kind === SymbolKind.Method && isClassed) {
+              const key = `${symbol.location.uri.fsPath}_${
+                symbol.location.range.start.line
+              }`;
+              TSCodeLensProvider.methods.set(key, classInd[0].getText());
+            }
 
             // if (force && !isClassed && !isInterface) {
             //   const keysForDelete = [];
@@ -252,23 +273,24 @@ export class TSCodeLensProvider implements CodeLensProvider {
   }
 
   provideCodeLenses(document: TextDocument, token: CancellationToken): any {
-    return (this.provider(document, token) as Thenable<MethodReferenceLens[]>).then(
-      async codeLenses => {
-
-        if (!this.config.settings.showBaseMemberInfo) {
-          return [];
-        }
-
-        var filterAsync = (array, filter) =>
-          Promise.all(array.map(entry => filter(entry))).then(bits =>
-            array.filter(entry => bits.shift())
-          );
-
-        const f: MethodReferenceLens[] = await filterAsync(codeLenses, x => this.setupCodeLens(x, true, true));
-        this.clearDecorations(this.overrideDecorations);
-        return f;
+    return (this.provider(document, token) as Thenable<
+      MethodReferenceLens[]
+    >).then(async codeLenses => {
+      if (!this.config.settings.showBaseMemberInfo) {
+        return [];
       }
-    );
+
+      var filterAsync = (array, filter) =>
+        Promise.all(array.map(entry => filter(entry))).then(bits =>
+          array.filter(entry => bits.shift())
+        );
+
+      const f: MethodReferenceLens[] = await filterAsync(codeLenses, x =>
+        this.setupCodeLens(x, true)
+      );
+      this.clearDecorations(this.overrideDecorations);
+      return f;
+    });
   }
 
   async resolveCodeLens(
@@ -281,7 +303,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
       if (isReady) {
         const isClassed = codeLens.isClassed;
         const isInterface = codeLens.isInterface;
-        const filtered = codeLens.symbolInfo;
+        const symbol = codeLens.symbolInfo;
         const testM = codeLens.testName;
         const classInd = codeLens.classInd;
         const interfaceInd = codeLens.interfaceInd;
@@ -290,22 +312,22 @@ export class TSCodeLensProvider implements CodeLensProvider {
           var editor = window.activeTextEditor;
           if (editor != null) {
             const gutterType = isClassed
-              ? filtered.kind === SymbolKind.Method
-                ? (isInterface ? 'interfaceMethodEdit' : 'methodEdit')
-                : (isInterface ? 'interfaceFieldEdit' : 'fieldEdit')
+              ? symbol.kind === SymbolKind.Method
+                ? isInterface
+                  ? 'interfaceMethodEdit'
+                  : 'methodEdit'
+                : isInterface
+                  ? 'interfaceFieldEdit'
+                  : 'fieldEdit'
               : 'implementInterface';
             const key = `${codeLens.uri.fsPath}_${
               codeLens.range.start.line
-              }_${testM}`;
+            }_${testM}`;
 
             let overrideDecoration;
             if (this.overrideDecorations.has(key)) {
               overrideDecoration = this.overrideDecorations.get(key);
-
               overrideDecoration.ranges = [codeLens.range];
-
-              // decorationsForFile.decoration.dispose();
-              // this.overrideDecorations.delete(key);
             } else {
               overrideDecoration = new TSDecoration();
               this.overrideDecorations.set(key, overrideDecoration);
@@ -313,7 +335,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
               overrideDecoration.decoration = window.createTextEditorDecorationType(
                 {
                   backgroundColor: isClassed
-                    ? filtered.kind === SymbolKind.Method
+                    ? symbol.kind === SymbolKind.Method
                       ? this.config.settings.methodOverrideColor
                       : this.config.settings.fieldOverrideColor
                     : this.config.settings.interfaceImplementationColor,
@@ -325,9 +347,9 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
               overrideDecoration.ranges.push(codeLens.range);
             }
-            var inheritedBase = '';
+            var inheritInfo = '';
             if (isClassed) {
-              inheritedBase = enu
+              inheritInfo = enu
                 .from(classInd)
                 .distinct()
                 .select(x => (x['baseClass'] as ClassDeclaration).getName())
@@ -335,8 +357,8 @@ export class TSCodeLensProvider implements CodeLensProvider {
             }
 
             if (isInterface) {
-              inheritedBase += isClassed ? ' : ' : '';
-              inheritedBase += enu
+              inheritInfo += isClassed ? ' : ' : '';
+              inheritInfo += enu
                 .from(interfaceInd)
                 .distinct()
                 .select(x => (x['interface'] as InterfaceDeclaration).getName())
@@ -345,18 +367,19 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
             overrideDecoration.isClassMember = isClassed;
             overrideDecoration.isInterfaceMember = isInterface;
-            overrideDecoration.inheritInfo = inheritedBase;
+            overrideDecoration.inheritInfo = inheritInfo;
 
             this.updateDecorations(codeLens.uri);
 
             const ref = isClassed ? classInd[0] : interfaceInd[0];
             const firstRef = isClassed ? ref['baseClass'] : ref['interface'];
             const file = firstRef.getSourceFile();
+
             return new CodeLens(codeLens.range, {
               command: 'tslens.gotoFile',
               arguments: [
                 file.getFilePath(),
-                file.getLineNumberFromPos(ref.getPos())
+                file.getLineNumberAtPos(ref.getPos())
               ],
               title: overrideDecoration.inheritInfo
             });

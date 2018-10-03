@@ -4,7 +4,7 @@ import Project, { ExpressionWithTypeArguments, InterfaceDeclaration, ClassDeclar
 export class Utils {
 
     public static getInterfaces(project: Project) {
-        return enu
+        const res = enu
         .from(project.getSourceFiles())
         .where(x => !!x)
         .select(x => {
@@ -19,6 +19,8 @@ export class Utils {
         .where(x => x.length > 0)
         .selectMany(x => x)
         .toArray();
+
+        return res;
       }
 
       public static findInterfaceByName(interfaces: InterfaceDeclaration[], x: ExpressionWithTypeArguments) {

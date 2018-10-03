@@ -3,7 +3,7 @@
   "displayName": "TSLens",
   "icon": "logo.png",
   "description": "Adds reference code lenses, highlights, gutters for Typescripts interfaces/classes methods/fields implementations, overrides and inheritance",
-  "version": "1.2.6",
+  "version": "1.2.8",
   "publisher": "MaxGotovkin",
   "author": "MaxGotovkin",
   "license": "MIT",
@@ -12,7 +12,7 @@
     "url": "https://github.com/BrainMaxx/tslens.git"
   },
   "engines": {
-    "vscode": "^1.0.0"
+    "vscode": "^1.1.21"
   },
   "keywords": [
     "references",
@@ -33,14 +33,16 @@
     "postinstall": "node ./node_modules/vscode/bin/install"
   },
   "contributes": {
-    "commands": [{
-            "command": "tslens.update",
-            "title": "TSLens: Update"
-        },
-        {
-            "command": "tslens.showOverrides",
-            "title": "TSLens: Show override candidates"
-        }],
+    "commands": [
+      {
+        "command": "tslens.update",
+        "title": "TSLens: Update"
+      },
+      {
+        "command": "tslens.showOverrides",
+        "title": "TSLens: Show override candidates"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "TSLens configuration",
@@ -68,6 +70,11 @@
         "tslens.decorateunused": {
           "default": true,
           "description": "A flag which indicates whether the initiating reference should be decorated if it is unsed",
+          "type": "boolean"
+        },
+        "tslens.basePreviewOnHover": {
+          "default": false,
+          "description": "A flag which indicates whether the base method should be shown on method hover",
           "type": "boolean"
         },
         "tslens.singular": {
@@ -111,7 +118,34 @@
           "type": "string"
         },
         "tslens.referencesTypes": {
-          "default": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],
+          "default": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
           "description": "Types of symbol (from SymbolKind enum) that should be analyzed for references",
           "type": "array"
         }
@@ -125,9 +159,9 @@
     "@types/linq": "2.2.33"
   },
   "dependencies": {
-    "vscode": "1.1.18",
+    "vscode": "^1.1.21",
     "minimatch": "^3.0.4",
-    "ts-simple-ast": "12.4.0",
+    "ts-simple-ast": "^16.0.2",
     "linq": "3.1.0"
   }
 }

@@ -1,3 +1,4 @@
+import { AppConfiguration } from './classes/AppConfiguration';
 'use strict';
 import {
   commands,
@@ -19,6 +20,7 @@ import { ClassDeclaration, SyntaxKind } from 'ts-simple-ast';
 import { MethodReferenceLens } from './classes/MethodReferenceLens';
 import { TSCodeRefProvider } from './providers/TSCodeRefProvider';
 import { TSCodeLensProvider } from './providers/TSCodeLensProvider';
+import { TSCodeHoverProvider } from './providers/TSCodeHoverProvider';
 
 export function provider(
   document: TextDocument,
@@ -87,21 +89,23 @@ export function provider(
 }
 
 export function activate(context: ExtensionContext) {
-  const tsProvider = new TSCodeLensProvider(provider, context);
+  const config = new AppConfiguration();
+  const tsProvider = new TSCodeLensProvider(config, provider, context);
   const refProvider = new TSCodeRefProvider(provider, context);
+  const hoverProvider = new TSCodeHoverProvider(config);
 
   function updateTextEditor() {
     const filePath = window.activeTextEditor.document.fileName;
-    const file = tsProvider.config.project.getSourceFile(filePath);
+    const file = config.project.getSourceFile(filePath);
 
     if (file) {
-      const del = [];
-      tsProvider.classCache.forEach((v, k, map) => {
-        if (k.endsWith(filePath.replace(/\\/g, '/').substring(1))) {
-          del.push(k);
-        }
-      });
-      del.forEach(x => tsProvider.classCache.delete(x));
+      // const del = [];
+      // tsProvider.classCache.forEach((v, k, map) => {
+      //   if (k.endsWith(filePath.replace(/\\/g, '/').substring(1))) {
+      //     del.push(k);
+      //   }
+      // });
+      // del.forEach(x => tsProvider.classCache.delete(x));
 
       file.refreshFromFileSystem().then(x => tsProvider.initInterfaces());
     }
@@ -124,7 +128,8 @@ export function activate(context: ExtensionContext) {
   disposables.push(
     //languages.registerCodeLensProvider({ pattern: '**/*.ts' }, navProvider),
     languages.registerCodeLensProvider({ pattern: '**/*.ts' }, tsProvider),
-    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, refProvider)
+    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, refProvider),
+    languages.registerHoverProvider({ pattern: '**/*.ts' }, hoverProvider)
   );
   disposables.push(
     window.onDidChangeActiveTextEditor(editor => {
@@ -160,7 +165,7 @@ export function activate(context: ExtensionContext) {
   disposables.push(
     commands.registerCommand('tslens.showOverrides', async () => {
       var pos = window.activeTextEditor.selection.active;
-      const f = tsProvider.config.project.getSourceFile(
+      const f = config.project.getSourceFile(
         window.activeTextEditor.document.fileName
       );
 

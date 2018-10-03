@@ -1,14 +1,11 @@
 import {
     CodeLensProvider,
     Range,
-    TextEditorDecorationType,
     window,
     TextDocument,
     CancellationToken,
     CodeLens,
     commands,
-    SymbolInformation,
-    SymbolKind,
     Location,
     ExtensionContext,
     Uri
@@ -33,27 +30,6 @@ import { AppConfiguration } from '../classes/AppConfiguration';
 import { MethodReferenceLens } from '../classes/MethodReferenceLens';
 import { TSDecoration } from '../classes/TSDecoration';
   
-  const standardSymbolKindSet = [
-    SymbolKind.Method,
-    SymbolKind.Function,
-    SymbolKind.Property,
-    SymbolKind.Class,
-    SymbolKind.Interface
-  ];
-  const cssSymbolKindSet = [
-    SymbolKind.Method,
-    SymbolKind.Function,
-    SymbolKind.Property,
-    SymbolKind.Variable
-  ];
-  
-  const SymbolKindInterst = {
-    scss: cssSymbolKindSet,
-    less: cssSymbolKindSet,
-    ts: standardSymbolKindSet,
-    js: standardSymbolKindSet
-  };
-    
   export class TSCodeRefProvider implements CodeLensProvider {
     config: AppConfiguration;
     private unusedDecorations: Map<string, TSDecoration> = new Map<

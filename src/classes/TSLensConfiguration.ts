@@ -4,7 +4,7 @@ import { SymbolKind } from "vscode";
 export class TSLensConfiguration {
   public showReferences: boolean = true;
   public showBaseMemberInfo: boolean = true;
-
+  public basePreviewOnHover: boolean = false;
   public blackbox: string[] = [];
   public blackboxTitle: string = '<< called from blackbox >>';
   public excludeself: boolean = true;
