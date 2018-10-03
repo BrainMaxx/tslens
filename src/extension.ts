@@ -142,7 +142,8 @@ export function activate(context: ExtensionContext) {
   );
   disposables.push(
     commands.registerCommand('tslens.update', () => {
-      triggerCodeLensComputation();
+      updateTextEditor();
+      //triggerCodeLensComputation();
     })
   );
   disposables.push(
