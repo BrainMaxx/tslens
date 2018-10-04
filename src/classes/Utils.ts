@@ -8,11 +8,16 @@ export class Utils {
         .from(project.getSourceFiles())
         .where(x => !!x)
         .select(x => {
-          const ns = x.getNamespaces();
-          if (ns.length > 0) {
-            return ns.map(m => m.getInterfaces());
-          } else {
-            return [x.getInterfaces()];
+          try {
+            const ns = x.getNamespaces();
+            if (ns.length > 0) {
+              return ns.map(m => m.getInterfaces());
+            } else {
+              return [x.getInterfaces()];
+            }  
+          } catch (error) {
+            console.warn(`Error occured while trying to get interfaces from ${x.getFilePath()}. ${error}`);
+            return [[]];
           }
         })
         .selectMany(x => x)

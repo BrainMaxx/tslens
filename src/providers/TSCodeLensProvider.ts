@@ -82,6 +82,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
   initInterfaces() {
     //setTimeout(() => {
     this.interfaces = Utils.getInterfaces(this.config.project);
+    return true;
     //}, 1000);
   }
 
