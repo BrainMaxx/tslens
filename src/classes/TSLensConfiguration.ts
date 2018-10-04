@@ -2,6 +2,7 @@ import { MethodDeclaration } from 'ts-simple-ast';
 import { SymbolKind } from "vscode";
 
 export class TSLensConfiguration {
+  public tsConfigPath: string = '';
   public showReferences: boolean = true;
   public showBaseMemberInfo: boolean = true;
   public basePreviewOnHover: boolean = false;

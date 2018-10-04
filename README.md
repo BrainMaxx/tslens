@@ -30,6 +30,8 @@ Supports complex inheritance info like this (navigation also supported):
 - **TSLens: Show override candidates** - if cursor inside some class that extends some other, shows override candidates from the base class and adds them
 
 ## Configuration properties
+- tslens.tsConfigPath
+  - Optional tsconfig.json file path, in case of using heterogeneous workspaces
 - tslens.showReferences
   - A flag which indicates whether the references infos should be shown
 - tslens.referencesTypes

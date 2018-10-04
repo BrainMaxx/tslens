@@ -1,6 +1,8 @@
 import { TSLensConfiguration } from './TSLensConfiguration';
-import Project from 'ts-simple-ast';
+import Project, { Options } from 'ts-simple-ast';
 import * as vscode from 'vscode';
+import fs = require('fs');
+
 
 export class AppConfiguration {
   private cachedSettings: TSLensConfiguration;
@@ -9,10 +11,18 @@ export class AppConfiguration {
 
   constructor() {
     if (vscode.workspace.rootPath) {
-      this.project = new Project({
-        tsConfigFilePath: vscode.workspace.rootPath + '/tsconfig.json',
+
+      let options: Options = {
+        tsConfigFilePath: this.settings.tsConfigPath || (vscode.workspace.rootPath + '/tsconfig.json'),
         addFilesFromTsConfig: true
-      });
+      };
+
+      const exists = fs.existsSync(options.tsConfigFilePath); 
+      if(exists) {
+        this.project = new Project(options);
+      } else {
+        this.project = new Project();
+      }
     }
     vscode.workspace.onDidChangeConfiguration(e => {
       this.cachedSettings = null;
