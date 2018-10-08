@@ -6,21 +6,19 @@ export class Utils {
     public static getInterfaces(project: Project) {
         const res = enu
         .from(project.getSourceFiles())
-        .where(x => !!x)
         .select(x => {
           try {
             const ns = x.getNamespaces();
             if (ns.length > 0) {
-              return ns.map(m => m.getInterfaces());
+              return [].concat.apply([], ns.map(m => m.getInterfaces())) as InterfaceDeclaration[];
             } else {
-              return [x.getInterfaces()];
+              return x.getInterfaces();
             }  
           } catch (error) {
             console.warn(`Error occured while trying to get interfaces from ${x.getFilePath()}. ${error}`);
-            return [[]];
+            return [];
           }
         })
-        .selectMany(x => x)
         .where(x => x.length > 0)
         .selectMany(x => x)
         .toArray();
@@ -64,17 +62,17 @@ export class Utils {
       public static getClassImplements(interfaces: InterfaceDeclaration[], cl: ClassDeclaration) {
         return enu
           .from(cl.getImplements())
-          .select(x => this.findInterfaceByName(interfaces, x))
-          .where(x => !!x)
           .select(x => {
-            return [x, ...x.getExtends().map(z => this.findInterfaceByName(interfaces, z))];
-          })
-          .selectMany(x => x)
-          .where(x => !!x)
-          .select(x => {
-            let mem = x.getMembers();
-            mem.forEach(z => (z['interface'] = x));
-            return mem;
+            const intf = this.findInterfaceByName(interfaces, x);
+            if(intf) {
+              const fi: InterfaceDeclaration[] = [intf, ...intf.getExtends().map(z => this.findInterfaceByName(interfaces, z)).filter(z => !!z)];
+
+              let mem: TypeElementTypes[] = [].concat.apply([], fi.map(z => z.getMembers()));
+              mem.forEach(z => (z['interface'] = x));
+              return mem;
+            }
+
+            return [];
           })
           .selectMany(x => x)
           .toArray();
