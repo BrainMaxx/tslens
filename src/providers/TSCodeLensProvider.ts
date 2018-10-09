@@ -81,8 +81,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
 
   initInterfaces() {
     //setTimeout(() => {
-    this.interfaces = Utils.getInterfaces(this.config.project);
-    return true;
+      this.interfaces = Utils.getInterfaces(this.config.project);
     //}, 1000);
   }
 
@@ -160,7 +159,7 @@ export class TSCodeLensProvider implements CodeLensProvider {
           });
         });
 
-        isChanged = Utils.updateInterfaces(this.config.project, [
+        isChanged = Utils.checkInterfaces(this.config.project, [
           ...nonBlackBoxedLocations.map(x => x.uri.fsPath),
           ...file
             .getImportDeclarations()
@@ -362,7 +361,17 @@ export class TSCodeLensProvider implements CodeLensProvider {
               inheritInfo += enu
                 .from(interfaceInd)
                 .distinct()
-                .select(x => (x['interface'] as InterfaceDeclaration).getName())
+                .select(x => {
+                  if (x['interface'] instanceof InterfaceDeclaration) {
+                    return (x['interface'] as InterfaceDeclaration).getName();
+                  }
+
+                  if (x['interface'] instanceof ExpressionWithTypeArguments) {
+                    return (x[
+                      'interface'
+                    ] as ExpressionWithTypeArguments).getText();
+                  }
+                })
                 .toJoinedString(' : ');
             }
 

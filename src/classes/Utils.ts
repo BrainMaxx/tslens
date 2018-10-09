@@ -1,124 +1,191 @@
 import * as enu from 'linq';
-import Project, { ExpressionWithTypeArguments, InterfaceDeclaration, ClassDeclaration, ClassMemberTypes, TypeElementTypes } from 'ts-simple-ast';
+import Project, {
+  ExpressionWithTypeArguments,
+  InterfaceDeclaration,
+  ClassDeclaration,
+  ClassMemberTypes,
+  TypeElementTypes
+} from 'ts-simple-ast';
 
 export class Utils {
-
-    public static getInterfaces(project: Project) {
-        const res = enu
-        .from(project.getSourceFiles())
-        .select(x => {
-          try {
-            const ns = x.getNamespaces();
-            if (ns.length > 0) {
-              return [].concat.apply([], ns.map(m => m.getInterfaces())) as InterfaceDeclaration[];
-            } else {
-              return x.getInterfaces();
-            }  
-          } catch (error) {
-            console.warn(`Error occured while trying to get interfaces from ${x.getFilePath()}. ${error}`);
-            return [];
+  /**
+   * Gets all interfaces inside a project
+   * @param project The source project
+   */
+  public static getInterfaces(project: Project): InterfaceDeclaration[] {
+    //project.getFileSystem();
+    const res = enu
+      .from(project.getSourceFiles())
+      .select(x => {
+        try {
+          const ns = x.getNamespaces();
+          if (ns.length > 0) {
+            return [].concat.apply(
+              [],
+              ns.map(m => m.getInterfaces())
+            ) as InterfaceDeclaration[];
+          } else {
+            return x.getInterfaces();
           }
-        })
-        .where(x => x.length > 0)
-        .selectMany(x => x)
-        .toArray();
-
-        return res;
-      }
-
-      public static findInterfaceByName(interfaces: InterfaceDeclaration[], x: ExpressionWithTypeArguments) {
-        const iname = this.getInterfaceName(x);
-        return enu.from(interfaces).firstOrDefault(z => {
-          try {
-            return z.getName() === iname;
-          } catch (error) {
-            return false;
-          }
-        });
-      }
-
-      public static updateInterfaces(project: Project, locations: string[]): boolean {
-        let isChanged = false;
-        enu
-          .from(locations)
-          .distinct()
-          .forEach(p => {
-            const interfaces = this.getInterfacesAtPath(project, p);
-            const path = p.replace(/\\/g, '/');
-            if (
-              !enu
-                .from(interfaces)
-                .any(x => x.getSourceFile().getFilePath() === path) &&
-              interfaces.length > 0
-            ) {
-              interfaces.push(...interfaces);
-              isChanged = true;
-            }
-          });
-    
-        return isChanged;
-      }
-
-      public static getClassImplements(interfaces: InterfaceDeclaration[], cl: ClassDeclaration) {
-        return enu
-          .from(cl.getImplements())
-          .select(x => {
-            const intf = this.findInterfaceByName(interfaces, x);
-            if(intf) {
-              const fi: InterfaceDeclaration[] = [intf, ...intf.getExtends().map(z => this.findInterfaceByName(interfaces, z)).filter(z => !!z)];
-
-              let mem: TypeElementTypes[] = [].concat.apply([], fi.map(z => z.getMembers()));
-              mem.forEach(z => (z['interface'] = x));
-              return mem;
-            }
-
-            return [];
-          })
-          .selectMany(x => x)
-          .toArray();
-      }
-    
-      public static getClassMembers(
-        interfaces: InterfaceDeclaration[],
-        cl: ClassDeclaration,
-        arr?: Array<ClassMemberTypes | TypeElementTypes>
-      ): Array<ClassMemberTypes | TypeElementTypes> {
-        arr = arr || this.getClassImplements(interfaces, cl);
-        const bc = cl.getBaseClass();
-        if (bc) {
-          const methods = bc.getMembers();
-    
-          methods.forEach(x => (x['baseClass'] = bc));
-          arr.push(
-            ...this.getClassImplements(interfaces, bc),
-            ...methods,
-            ...this.getClassMembers(interfaces, bc, methods)
+        } catch (error) {
+          console.warn(
+            `Error occured while trying to get interfaces from ${x.getFilePath()}. ${error}`
           );
-    
-          return arr;
-        } else {
-          return this.getClassImplements(interfaces, cl);
+          return [];
         }
+      })
+      .where(x => x.length > 0)
+      .selectMany(x => x)
+      .toArray();
+
+    return res;
+  }
+
+  /**
+   * Finds an interface by expression declaration of a interface
+   * @param interfaces Interfaces list
+   * @param x Expression
+   */
+  public static findInterfaceByName(
+    interfaces: InterfaceDeclaration[],
+    x: ExpressionWithTypeArguments
+  ): InterfaceDeclaration {
+    const iname = this.getInterfaceName(x);
+    return interfaces.find(z => {
+      try {
+        return z.getName() === iname;
+      } catch (error) {
+        return false;
       }
-    
-      public static getInterfacesAtPath(project: Project, path: string): InterfaceDeclaration[] {
-        const file = project.getSourceFile(path);
-    
-        return file ? enu
+    });
+  }
+  /**
+   * Checks the project for interfaces changes
+   * @param project Source project
+   * @param locations File path's to search in
+   */
+  public static checkInterfaces(
+    project: Project,
+    locations: string[]
+  ): boolean {
+    let isChanged = false;
+    enu
+      .from(locations)
+      .distinct()
+      .forEach(p => {
+        const interfaces = this.getInterfacesAtPath(project, p);
+        const path = p.replace(/\\/g, '/');
+        if (
+          !enu
+            .from(interfaces)
+            .any(x => x.getSourceFile().getFilePath() === path) &&
+          interfaces.length > 0
+        ) {
+          interfaces.push(...interfaces);
+          isChanged = true;
+        }
+      });
+
+    return isChanged;
+  }
+
+  /**
+   * Gets implementations for class
+   * @param interfaces Interfaces list
+   * @param cl Class
+   */
+  public static getClassImplements(
+    interfaces: InterfaceDeclaration[],
+    cl: ClassDeclaration
+  ): TypeElementTypes[] {
+    const impls = cl.getImplements().map(x => {
+      const intf = this.findInterfaceByName(interfaces, x);
+      if (intf) {
+        const fi: InterfaceDeclaration[] = [
+          intf,
+          ...intf
+            .getExtends()
+            .map(z => this.findInterfaceByName(interfaces, z))
+            .filter(z => !!z)
+        ];
+
+        let mem: TypeElementTypes[] = [].concat.apply(
+          [],
+          fi.map(z => z.getMembers())
+        );
+        mem.forEach(z => (z['interface'] = x));
+        return mem;
+      }
+
+      return [];
+    });
+
+    return [].concat.apply([], impls);
+  }
+
+  /**
+   * 
+   * @param interfaces Gets class members (methods, fields, props) including base class members
+   * @param startClass Initial class to start search for
+   * @param cl For internal use!
+   * @param arr For internal use!
+   */
+  public static getClassMembers(
+    interfaces: InterfaceDeclaration[],
+    startClass: ClassDeclaration,
+    cl?: ClassDeclaration,
+    arr?: Array<ClassMemberTypes | TypeElementTypes>
+  ): Array<ClassMemberTypes | TypeElementTypes> {
+    arr = arr || this.getClassImplements(interfaces, cl || startClass);
+    const bc = (cl || startClass).getBaseClass();
+    if (bc) {
+      const methods = bc.getMembers();
+
+      methods.forEach(x => (x['baseClass'] = bc));
+      arr.push(
+        ...this.getClassImplements(interfaces, bc),
+        ...methods,
+        ...this.getClassMembers(interfaces, startClass, bc, methods)
+      );
+
+      return arr;
+    } else {
+      return this.getClassImplements(interfaces, cl || startClass);
+    }
+  }
+
+  /**
+   * Gets the interface declarations for a file
+   * @param project Source project
+   * @param path Path to search in
+   */
+  public static getInterfacesAtPath(
+    project: Project,
+    path: string
+  ): InterfaceDeclaration[] {
+    const file = project.getSourceFile(path);
+
+    return file
+      ? enu
           .from(file.getNamespaces())
           .select(x => x.getInterfaces())
           .selectMany(x => x)
           .concat(file.getInterfaces())
-          .toArray() : [];
-      }
-    
-      public static getInterfaceName(f: ExpressionWithTypeArguments) {
-        if (f.compilerNode.expression['name']) {
-          return f.compilerNode.expression['name'].escapedText.trim();
-        } else if (f.compilerNode.expression['escapedText']) {
-          return f.compilerNode.expression['escapedText'].trim();
-        } else {
-          return f.compilerNode.expression.getText().trim();
-        }
-      }
-} 
+          .toArray()
+      : [];
+  }
+
+  /**
+   * Gets the interface name from an expression
+   * @param f Expression
+   */
+  public static getInterfaceName(f: ExpressionWithTypeArguments): string {
+    if (f.compilerNode.expression['name']) {
+      return f.compilerNode.expression['name'].escapedText.trim();
+    } else if (f.compilerNode.expression['escapedText']) {
+      return f.compilerNode.expression['escapedText'].trim();
+    } else {
+      return f.compilerNode.expression.getText().trim();
+    }
+  }
+}
