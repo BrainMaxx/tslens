@@ -21,67 +21,69 @@ import { MethodReferenceLens } from './classes/MethodReferenceLens';
 import { TSCodeRefProvider } from './providers/TSCodeRefProvider';
 import { TSCodeLensProvider } from './providers/TSCodeLensProvider';
 import { TSCodeHoverProvider } from './providers/TSCodeHoverProvider';
+import { Utils } from './classes/Utils';
 
-export function provider(
+function traceSymbolInfo(document: TextDocument, usedPositions: {}, symbolInformation: SymbolInformation): MethodReferenceLens {
+  var index;
+  var lineIndex = symbolInformation.location.range.start.line;
+  do {
+    var range = symbolInformation.location.range;
+    var line = document.lineAt(lineIndex);
+    index = line.text.lastIndexOf(symbolInformation.name);
+    if (index > -1) {
+      break;
+    }
+    lineIndex++;
+  } while (lineIndex <= symbolInformation.location.range.end.line);
+
+  if (symbolInformation.name == '<function>') {
+    range = null;
+  } else if (index == -1) {
+    var line = document.lineAt(
+      symbolInformation.location.range.start.line
+    );
+    index = line.firstNonWhitespaceCharacterIndex;
+    lineIndex = range.start.line;
+    range = new Range(lineIndex, index, lineIndex, 90000);
+  } else {
+    range = new Range(
+      lineIndex,
+      index,
+      lineIndex,
+      index + symbolInformation.name.length
+    );
+  }
+  if (range) {
+    var position = document.offsetAt(range.start);
+    if (!usedPositions[position]) {
+      usedPositions[position] = 1;
+      return new MethodReferenceLens(
+        new Range(range.start, range.end),
+        document.uri,
+        null,
+        null,
+        symbolInformation
+      );
+    }
+  }
+}
+
+
+export async function provider(
   document: TextDocument,
   token: CancellationToken
-): PromiseLike<MethodReferenceLens[]> {
-
+): Promise<MethodReferenceLens[]> {
   try {
-    return commands
-      .executeCommand<SymbolInformation[]>(
-        'vscode.executeDocumentSymbolProvider',
-        document.uri
-      )
-      .then(symbolInformations => {
-        var usedPositions = [];
-        return symbolInformations
-          .map(symbolInformation => {
-            var index;
-            var lineIndex = symbolInformation.location.range.start.line;
-            do {
-              var range = symbolInformation.location.range;
-              var line = document.lineAt(lineIndex);
-              index = line.text.lastIndexOf(symbolInformation.name);
-              if (index > -1) {
-                break;
-              }
-              lineIndex++;
-            } while (lineIndex <= symbolInformation.location.range.end.line);
+    const symbolInformations = await commands.executeCommand<
+      SymbolInformation[]
+    >('vscode.executeDocumentSymbolProvider', document.uri);
 
-            if (symbolInformation.name == '<function>') {
-              range = null;
-            } else if (index == -1) {
-              var line = document.lineAt(
-                symbolInformation.location.range.start.line
-              );
-              index = line.firstNonWhitespaceCharacterIndex;
-              lineIndex = range.start.line;
-              range = new Range(lineIndex, index, lineIndex, 90000);
-            } else {
-              range = new Range(
-                lineIndex,
-                index,
-                lineIndex,
-                index + symbolInformation.name.length
-              );
-            }
-            if (range) {
-              var position = document.offsetAt(range.start);
-              if (!usedPositions[position]) {
-                usedPositions[position] = 1;
-                return new MethodReferenceLens(
-                  new Range(range.start, range.end),
-                  document.uri,
-                  null,
-                  null,
-                  symbolInformation
-                );
-              }
-            }
-          })
-          .filter(item => !!item);
-      });
+    var usedPositions = [];
+    return Utils.symbolsAggregator(document, usedPositions, symbolInformations)
+      .map(symbolInformation => {
+        return traceSymbolInfo(document, usedPositions, symbolInformation as SymbolInformation);
+      })
+      .filter(item => !!item);
   } catch (error) {
     console.log(error);
     return Promise.resolve([]);
@@ -127,9 +129,18 @@ export function activate(context: ExtensionContext) {
   const self = this;
   disposables.push(
     //languages.registerCodeLensProvider({ pattern: '**/*.ts' }, navProvider),
-    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, tsProvider),
-    languages.registerCodeLensProvider({ pattern: '**/*.ts' }, refProvider),
-    languages.registerHoverProvider({ pattern: '**/*.ts' }, hoverProvider)
+    languages.registerCodeLensProvider(
+      { pattern: '**/*.ts' },
+      tsProvider
+    ),
+    languages.registerCodeLensProvider(
+      { pattern: '**/*.ts' },
+      refProvider
+    ),
+    languages.registerHoverProvider(
+      { pattern: '**/*.ts' },
+      hoverProvider
+    )
   );
   disposables.push(
     window.onDidChangeActiveTextEditor(editor => {
@@ -170,10 +181,10 @@ export function activate(context: ExtensionContext) {
         window.activeTextEditor.document.fileName
       );
 
-      const symbols = await commands.executeCommand<SymbolInformation[]>(
+      const symbols = Utils.symbolsAggregator(window.activeTextEditor.document, {}, await commands.executeCommand<SymbolInformation[]>(
         'vscode.executeDocumentSymbolProvider',
         window.activeTextEditor.document.uri
-      );
+      ));
 
       const filtered = symbols.find(x => x.location.range.contains(pos));
 

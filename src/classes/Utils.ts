@@ -1,24 +1,59 @@
 import * as enu from 'linq';
 import Project, {
-  ExpressionWithTypeArguments,
-  InterfaceDeclaration,
   ClassDeclaration,
   ClassMemberTypes,
+  ExpressionWithTypeArguments,
+  InterfaceDeclaration,
+  NamespaceDeclaration,
+  SourceFile,
   TypeElementTypes
 } from 'ts-simple-ast';
+import { TextDocument, SymbolInformation } from 'vscode';
 
 export class Utils {
+  /**
+   * Agreegates symbol information including children
+   * @param document
+   * @param usedPositions
+   * @param symbolInformations
+   * @param symbols
+   */
+  public static symbolsAggregator(
+    document: TextDocument,
+    usedPositions: {},
+    symbolInformations: SymbolInformation[],
+    symbols: SymbolInformation[] = [],
+    parent: string = null
+  ): SymbolInformation[] {
+    symbolInformations.forEach(x => {
+      if (parent) {
+        x.containerName = parent;
+      }
+
+      symbols.push(x);
+      Utils.symbolsAggregator(
+        document,
+        usedPositions,
+        x['children'] || [],
+        symbols,
+        x.name
+      );
+    });
+
+    return symbols;
+  }
+
   /**
    * Gets all interfaces inside a project
    * @param project The source project
    */
   public static getInterfaces(project: Project): InterfaceDeclaration[] {
-    //project.getFileSystem();
-    const res = enu
+    // project.getFileSystem();
+    const res: InterfaceDeclaration[] = enu
       .from(project.getSourceFiles())
       .select(x => {
         try {
-          const ns = x.getNamespaces();
+          const ns: NamespaceDeclaration[] = x.getNamespaces();
           if (ns.length > 0) {
             return [].concat.apply(
               [],
@@ -50,7 +85,7 @@ export class Utils {
     interfaces: InterfaceDeclaration[],
     x: ExpressionWithTypeArguments
   ): InterfaceDeclaration {
-    const iname = this.getInterfaceName(x);
+    const iname: string = this.getInterfaceName(x);
     return interfaces.find(z => {
       try {
         return z.getName() === iname;
@@ -68,13 +103,16 @@ export class Utils {
     project: Project,
     locations: string[]
   ): boolean {
-    let isChanged = false;
+    let isChanged: boolean = false;
     enu
       .from(locations)
       .distinct()
       .forEach(p => {
-        const interfaces = this.getInterfacesAtPath(project, p);
-        const path = p.replace(/\\/g, '/');
+        const interfaces: InterfaceDeclaration[] = this.getInterfacesAtPath(
+          project,
+          p
+        );
+        const path: string = p.replace(/\\/g, '/');
         if (
           !enu
             .from(interfaces)
@@ -98,8 +136,11 @@ export class Utils {
     interfaces: InterfaceDeclaration[],
     cl: ClassDeclaration
   ): TypeElementTypes[] {
-    const impls = cl.getImplements().map(x => {
-      const intf = this.findInterfaceByName(interfaces, x);
+    const impls: TypeElementTypes[][] = cl.getImplements().map(x => {
+      const intf: InterfaceDeclaration = this.findInterfaceByName(
+        interfaces,
+        x
+      );
       if (intf) {
         const fi: InterfaceDeclaration[] = [
           intf,
@@ -113,6 +154,7 @@ export class Utils {
           [],
           fi.map(z => z.getMembers())
         );
+        // tslint:disable-next-line:no-string-literal
         mem.forEach(z => (z['interface'] = x));
         return mem;
       }
@@ -124,7 +166,7 @@ export class Utils {
   }
 
   /**
-   * 
+   *
    * @param interfaces Gets class members (methods, fields, props) including base class members
    * @param startClass Initial class to start search for
    * @param cl For internal use!
@@ -137,10 +179,11 @@ export class Utils {
     arr?: Array<ClassMemberTypes | TypeElementTypes>
   ): Array<ClassMemberTypes | TypeElementTypes> {
     arr = arr || this.getClassImplements(interfaces, cl || startClass);
-    const bc = (cl || startClass).getBaseClass();
+    const bc: ClassDeclaration = (cl || startClass).getBaseClass();
     if (bc) {
-      const methods = bc.getMembers();
+      const methods: ClassMemberTypes[] = bc.getMembers();
 
+      // tslint:disable-next-line:no-string-literal
       methods.forEach(x => (x['baseClass'] = bc));
       arr.push(
         ...this.getClassImplements(interfaces, bc),
@@ -163,7 +206,7 @@ export class Utils {
     project: Project,
     path: string
   ): InterfaceDeclaration[] {
-    const file = project.getSourceFile(path);
+    const file: SourceFile = project.getSourceFile(path);
 
     return file
       ? enu
@@ -180,9 +223,13 @@ export class Utils {
    * @param f Expression
    */
   public static getInterfaceName(f: ExpressionWithTypeArguments): string {
+    // tslint:disable-next-line:no-string-literal
     if (f.compilerNode.expression['name']) {
+      // tslint:disable-next-line:no-string-literal
       return f.compilerNode.expression['name'].escapedText.trim();
+      // tslint:disable-next-line:no-string-literal
     } else if (f.compilerNode.expression['escapedText']) {
+      // tslint:disable-next-line:no-string-literal
       return f.compilerNode.expression['escapedText'].trim();
     } else {
       return f.compilerNode.expression.getText().trim();
